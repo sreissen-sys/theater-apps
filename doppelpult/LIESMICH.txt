@@ -1,0 +1,421 @@
+DOPPELPULT – Paket zum Hochladen (Stand 08d59ae4)
+===============================================
+
+Was das ist
+-----------
+Der ganze Ordner „doppelpult“ ist die App. Er braucht nur einen Platz im Netz mit https.
+Es gibt keinen Server-Teil: Deine PDFs und Eintragungen bleiben auf dem iPad und werden
+nirgends hochgeladen. Im Netz liegt nur das leere Programm.
+
+1. Hochladen
+------------
+Den Ordner „doppelpult“ mit allem, was darin liegt, unverändert hochladen. Wichtig:
+- Die Adresse muss mit https:// beginnen (sonst geht der Betrieb ohne Netz nicht).
+- Die Unterordner (vendor, fonts, icons) und die Dateien sw.js und manifest.webmanifest
+  müssen neben index.html liegen bleiben.
+Geeignet sind zum Beispiel eigener Webspace, GitHub Pages, Netlify oder Cloudflare Pages.
+Ein Unterordner wie https://deine-seite.de/doppelpult/ ist in Ordnung.
+
+Live-Fassung (Google Docs) statt PDF
+------------------------------------
+Knopf „Live“ oben in der Fassung: links erscheint die Live-Fassung (live.html in diesem Ordner).
+Dort „Google-Fassung öffnen“. Einmalig in der Google Cloud bei „Clients“ als JavaScript-Quelle
+auch die Doppelpult-Adresse eintragen (z. B. https://doppelpult.netlify.app).
+Google-Zugang fest einbauen: Liegt neben live.html eine Datei google.json (in der Live-Fassung
+unter „Google-Zugang ändern“ → „Als Datei sichern“), muss niemand mehr Client-ID,
+API-Schlüssel oder Projektnummer eingeben – auf keinem Gerät.
+Farbige Zeilen mit „Nr. 3“ oder dem Songnamen schalten rechts den Song (samt Tempo) um –
+beim Lesen ab etwa einem Drittel von oben und sofort beim Antippen.
+Eigene Eintragungen in der Live-Fassung (bleiben nur in Doppelpult, das Doc bleibt unberührt):
+- Stifte, Marker und Radierer schreiben direkt auf den Text. Jede Notiz hängt am Absatz, auf dem
+  sie beginnt, wandert mit ihm und wächst mit der Schriftgröße.
+- „Zuweisen“ auf eine Zeile ziehen: der Song hängt an diesem Absatz und kommt beim Lesen dort.
+- Wird ein Absatz im Doc umformuliert, gehen die Eintragungen mit. Wird er gelöscht, erscheinen
+  Zuweisungen oben rechts unter „Ohne Platz“ und lassen sich neu in den Text ziehen.
+- „Alles sichern“ nimmt diese Eintragungen mit.
+Nochmals „Live“ tippen: zurück zum PDF.
+
+Neu in Version 36
+-----------------
+- Song kopieren: Setlist → „Kopie“ neben dem Song → mit oder ohne Eintragungen. Für Songs,
+  die mehrmals in einer Setlist vorkommen. Die Kopie landet direkt darunter.
+- Tempo-Marken: Tempo und Takt am Metronom einstellen, „+♩“ tippen, dann auf die Notenseite.
+  Antippen der Marke stellt Tempo und Takt ein. Lange drücken übernimmt, was gerade am
+  Metronom steht. Ziehen verschiebt, × entfernt. Kopien und Sicherungen nehmen sie mit.
+- Zuweisungen ignorieren (Knopf mit durchgestrichener Kette neben „Zuweisen“): Die Fassung
+  schaltet keine Songs um, die Songwahl springt nicht in der Fassung. Zum freien Blättern.
+- Notizen übertragen (Knopf mit den zwei Blättern im Kopf der Fassung): „Alle Notizen kopieren“,
+  dann die neue Fassung öffnen – PDF oder Live – und „In diese Fassung einsetzen“.
+  Jede Notiz findet ihren Platz über den Text daneben, auch wenn Seiten und Zeilen anders
+  umbrechen. Wo der Text fehlt oder geändert ist, wird übersprungen (die App sagt, wie viele).
+  „Einsetzen rückgängig“ nimmt alles wieder heraus.
+
+Neu in Version 40: Setlist exportieren
+--------------------------------------
+Setlist → „Exportieren …“ (oder Sicherung → „Setlist als PDF“). Anhaken, was hinein soll:
+Fassung, Songs, Übersicht – und was eingezeichnet wird: Handschrift, Zuweisungen als Etiketten,
+Tempo und Takt. Als eine PDF (gut für forScore) oder als einzelne PDFs in einer ZIP-Datei.
+Mit Live-Fassung: „so wie angezeigt“ (nur eingeblendete Gewerke, neu gesetzt) oder „ganzes Doc,
+wie Google es druckt“. Handschrift und Zuweisungen kommen in beiden Fällen an ihre Textstellen.
+
+Neu in Version 46: Notizen als Ganzes übertragen, Lasso in der Live-Fassung
+--------------------------------------------------------------------------
+Kopieren/Einsetzen nimmt nah beieinanderliegende Striche als eine Notiz (z. B. ein Wort, ein Pfeil
+mit Beschriftung). So bleibt jede Notiz in ihrer Form und landet als Ganzes an ihrer Textstelle.
+Hat sich der Text geändert, kommt die Notiz ungefähr an dieselbe Stelle, statt verloren zu gehen.
+Lasso in der Live-Fassung: Striche einkreisen, dann in der Auswahl ziehen = verschieben (Rückgängig geht).
+Die Live-Fassung schaltet den Song jetzt wie das PDF: sobald die Stelle ins untere Drittel kommt.
+
+Neu in Version 117
+- Live in Doppelpult: Beim schnellen Scrollen blitzen keine weißen Flächen mehr auf (Safari zeichnet beim schnellen Wischen kurz nach – der Grund hat jetzt die Farbe der Fassung).
+- Miniatur: Seite 1 steht oben, die Miniatur läuft anteilig mit wie eine Bildlaufleiste (vorher stand das Sichtfeld immer in der Mitte, oben blieb leerer Platz).
+
+Neu in Version 116
+- Live in Doppelpult sieht jetzt aus wie Live allein: dunkle Tape-Knöpfe mit Symbolen, Trennstriche zwischen den Gruppen, Papier-Symbol je Modus. Bei schmaler Live-Seite rücken Öffnen und Miniatur als Symbole zusammen; ganz schmal ordnet sich die Leiste wie auf dem Handy.
+
+Neu in Version 115
+- Live im Querformat und auf Tablet/Rechner: Die Gruppen der Leiste sind durch feine Striche getrennt (Szene | Schrift & Papier | Werkzeuge & Gewerke | Miniatur). Der Papier-Knopf ist nur so breit wie nötig und bleibt in jedem Modus gleich.
+
+Neu in Version 114
+- Live: Fassung wechseln über den Titel oben (▾). Es öffnet sich erst ein Fenster mit der offenen Fassung, den zuletzt geladenen und „Aus Google Drive wählen …“ – tippen daneben schließt es, die Fassung bleibt offen. Der Knopf „Öffnen“ ist aus der Leiste verschwunden (in Doppelpult öffnet er jetzt dasselbe Fenster).
+- Live: Das Feld „Szene …“ ist nur noch so breit wie sein Text.
+
+Neu in Version 113
+- Live: Papier-Modus „Dämmerung“ heißt jetzt „Abend“. Der Papier-Knopf bleibt immer gleich groß; sein Symbol zeigt den Modus (Sonne, Blatt, Abendsonne, Mond).
+- Live: Solange Werkzeuge oder Gewerke offen sind, scrollt die Fassung dahinter nicht mehr. Tippen neben das Fenster schließt es.
+- Live: Schriftauswahl schmaler; bei „Rolle wählen“ gibt es „‹ Zurück zu Werkzeuge“.
+- Regie-Modus: Knöpfe im Stil der App (dunkles Tape, eingeschaltet gelb). Das Gewerk, in dem gerade geschrieben wird, leuchtet und trägt einen Stift; die anderen sind blasser.
+- Regie-Modus: Seiten wie in Docs (A4) statt einer Endlosseite.
+
+Neu in Version 112
+- Live-Fassung allein: Die Knöpfe der Leiste sind jetzt dunkle Klebestreifen (gelb ist nur, was gerade gilt: Papier-Modus und Eingeschaltetes); eingeschaltet werden sie zum gelben Tape.
+- Live-Fassung auf dem Handy: Die Anmerkungs-Leiste unten passt jetzt ganz auf den Bildschirm (oben die Stelle und ✕, darunter die Knöpfe).
+- Live-Fassung allein: Werkzeuge → „Live aktualisieren“ lädt die neueste Version (die geöffnete Fassung bleibt offen). Gibt es eine neue, sagt Live das beim Start.
+- Werkzeuge in Live: Regie-Modus als normaler Knopf im Stil der anderen; das Fenster schwingt auf dem Handy nicht mehr seitlich (Schriftauswahl passt sich an).
+- Live-Fassung allein (Handy, Tablet, Rechner): Neue Leiste. Die Knöpfe sind in Gruppen geordnet (Szene · Schrift und Papier · Werkzeuge und Gewerke · Öffnen und Miniatur), haben Symbole und ordnen sich je nach Bildschirm sinnvoll an. Auf dem Handy: oben Szene und Schrift, darunter vier gleich breite Felder.
+
+Neu in Version 111
+- Live-Fassung ohne Internet: Kein Hinweis „Anmeldung abgelaufen“ mehr, wenn eigentlich nur das Netz fehlt. Der gespeicherte Stand bleibt sichtbar, oben steht „Offline“.
+- Den Status oben links („Offline“ bzw. die Uhrzeit) antippen: Ein kleines Fenster zeigt den letzten Abgleich und hat „Neu verbinden“ (meldet bei Bedarf auch neu bei Google an).
+- Abrufe ohne Netz hängen nicht mehr: nach spätestens 20 Sekunden gilt die Verbindung als weg, danach geht es sofort weiter, sobald das Netz zurück ist.
+- War das Netz beim Öffnen weg, ließ sich die Google-Anmeldung danach nicht mehr starten – behoben.
+- A4-Seiten: Eine sehr große Notiz konnte eine Seite riesig lang machen (lauter Zusatzseiten 71a, 71b … und dunkle, leere Fläche). Eine Seite wird für Notizen jetzt nur noch maßvoll verlängert – und nur dort, wo wirklich Tinte zu sehen ist (unsichtbare Reste zählen nicht mehr).
+- Die Miniatur in Live passt sich sofort an, wenn Seiten ein- oder ausgeschaltet werden (zeigte und scrollte sonst nur den alten Stand).
+- Ohne Netz öffnet sich beim Antippen kein leeres Google-Anmeldefenster mehr („Safari kann die Seite nicht öffnen …“). Angemeldet wird erst wieder, wenn das Netz da ist.
+
+Neu in Version 110
+- Live-Fassung: Notizen werden nie mehr zerschnitten. Was nah beieinander geschrieben ist (auch über Ecken, auch TXT), ist eine Notiz und hängt als Ganzes an dem Absatz, an dem ihr oberer Rand liegt. Beim Ein- und Ausblenden von Gewerken und beim Seitenumbruch bleibt sie zusammen.
+- Notizen an ausgeblendeten Absätzen bleiben sichtbar: Sie rücken an den Anfang des nächsten sichtbaren Absatzes.
+- Vorhandene Notizen werden einmal zusammengefasst, sobald alle Gewerke eingeblendet sind (der alte Stand wird vorher gesichert).
+- Bild-Lasso jetzt auch in der Live-Fassung: Ausschnitt einkreisen, er wird als Bild kopiert und lässt sich mit dem Lasso im PDF, in den Noten oder in Live einsetzen.
+
+Neu in Version 109
+- Live-Fassung am iPad: Am Anfang und Ende der Fassung federt die Seite nicht mehr nach – die Kopfleiste rutscht nicht mehr mit, kein weißer Streifen darüber.
+
+Neu in Version 108
+- Live-Fassung → Werkzeuge → Ansicht: Schriftart wählbar (Literata, Atkinson Hyperlegible – besonders gut lesbar, Arial, Calibri, Verdana, Roboto, Open Sans, Times New Roman, Georgia, Merriweather, Courier New). Gilt je Gerät.
+- Live-Fassung: eigene farbige Markierungen – Text auswählen (lange drücken), Farbe antippen. Nur auf diesem Gerät, wandern mit, wenn sich die Fassung ändert.
+
+Neu in Version 107
+- Live-Fassung am iPad: Die Seite schwingt beim Scrollen nicht mehr seitlich hin und her. Ursache waren Notizen, die rechts über den Rand reichen – sie machten die Seite breiter als das Fenster.
+
+Neu in Version 106
+- Live-Fassung fragt alle 3 statt 10 Sekunden nach Änderungen – und dabei nur noch die Versionsnummer des Docs; das ganze Doc wird nur geladen, wenn sich wirklich etwas geändert hat.
+
+Neu in Version 105
+- Vorstellung: In der Live-Fassung ist die ganze Kopfleiste ausgeblendet – sie kommt auch beim Hochscrollen nicht wieder. Der Text bleibt beim Ein- und Ausschalten an seiner Stelle.
+
+Neu in Version 104
+- TXT: Farbe wählbar wie bei den Stiften, Schriftgröße in Punkt wie in der Textverarbeitung (Standard 12). Die zuletzt gewählte Farbe und Größe bleiben.
+- TXT: Text mit dem TXT-Werkzeug einfach ziehen = verschieben (Rückgängig geht). Antippen = ändern.
+- Rechtsklick (oder mit TXT lange drücken): Kopieren, Ändern, Löschen, Einfügen – auch zwischen Noten, Fassung und Live-Fassung und aus anderen Apps.
+- Vorstellung: Schreiben ist ganz aus – auch mit dem Pencil. Kein Verschieben von Marken, kein Löschen, kein Bearbeiten der Live-Fassung. Scrollen, Blättern, Song antippen und Metronom gehen. Nach der Vorstellung ist das vorige Werkzeug wieder da.
+
+Neu in Version 103
+- Neues Werkzeug „TXT“ neben dem Hand-Symbol: an eine Stelle tippen und eine getippte Notiz schreiben – in Noten, Fassung (PDF) und Live-Fassung, auch am PC oder mit dem Finger. Vorhandenen Text mit TXT antippen: ändern, Größe (A−/A+) oder löschen. Radierer, Lasso, Rückgängig, Sicherung und PDF-Export gelten auch für Text.
+- Live-Fassung: Seitenumbrüche richten sich nach den Notizen. Was an Handschrift unter den letzten Text einer Seite reicht, wird nicht mehr abgeschnitten – auch nicht beim Kürzen leerer Seitenenden; ragt eine Notiz über den Seitenanfang, bekommt die Seite oben Platz.
+- Live-Fassung: Mehrere Striche kurz hintereinander und dicht beieinander (z. B. ein Wort) hängen am selben Absatz, damit sie beim Ausblenden oder Umbrechen zusammenbleiben.
+
+Neu in Version 102
+- Pencil: Ursache für knubbelige Linien und Haken gefunden (dank Stift-Aufnahme). Safari liefert jedes Stift-Ereignis doppelt; die App hat die Punkte zweimal genommen, der Strich lief dabei ständig ein Stück zurück und wieder vor. Doppelte Punkte werden jetzt verworfen. Gilt in Noten, Fassung und Live.
+- Das Überspringen der ersten Millisekunden aus Version 101 ist wieder aus (die Aufnahme zeigt keinen Haken am Anfang). Punkte ohne Druck zählen weiterhin nicht.
+
+Neu in Version 101 (Test)
+- Pencil-Anfang wie in Apple Notizen: Punkte ohne Druck (Schweben) und die ersten 12 Millisekunden nach dem Aufsetzen werden übersprungen – kein kleiner Extra-Haken mehr am Strichanfang (z. B. beim Fragezeichen). Gilt in Noten, Fassung und Live.
+- Sicherung → Stift-Aufnahme: zeichnet die rohen Pencil-Daten auf und sichert sie als Datei (zur Fehlersuche).
+
+Neu in Version 100 (Test)
+- Kuli mit dem Pencil verhält sich jetzt genau wie Zeichnen mit dem Finger: gleichmäßige Breite ohne Druck und ohne Vorausberechnung der Spitze. Gilt auch für schon Geschriebenes. Bleistift bleibt druck- und neigungsempfindlich.
+
+Neu in Version 99
+- Stifte mit dem Pencil: Linien sind jetzt glatt statt knubbelig. Der Pencil meldet sehr viele, leicht zitternde Punkte; dicht beieinander liegende werden jetzt gemittelt und der Druck sanft geglättet. Gilt auch für schon Geschriebenes.
+
+Neu in Version 98
+- Live in Doppelpult: Die Kopfleiste passt sich der Breite an – wird es eng (z. B. mit „Rolle: …“), verschwinden zuerst Uhrzeit, Hell/Nacht, „Rolle:“-Vorsilbe, Schriftgröße, Szenenwahl. Die Seite lässt sich nie mehr seitlich verschieben.
+- Live: Bilder, die Google nicht direkt ausliefert, kommen jetzt aus dem Doc-Export und werden auf dem Gerät abgelegt (auch ohne Netz da).
+
+Neu in Version 97
+- Live: Gewerk-Legende wird auch erkannt, wenn eine Legenden-Zeile nur mit weichem Umbruch (Umschalt+Enter) vom Text davor getrennt ist. Die Legende selbst wird in Live nicht angezeigt, der Text davor bleibt.
+
+Neu in Version 96
+- Live: Seite lässt sich nicht mehr seitlich verschieben – sehr lange Leerzeichen-Abstände brechen jetzt wie im Doc in die nächste Zeile, statt über den Rand zu ragen.
+- Live: Bilder, deren Google-Adresse abgelaufen ist (z. B. nach Öffnen aus dem Vorrat), werden automatisch neu geholt.
+
+Neu in Version 95
+- Live: Abstände wie im Doc – Text nach Tabs und vielen Leerzeichen steht an derselben Stelle wie in Google Docs (Personenliste, Namen vor Liedtexten). Einzüge und zentrierte Absätze werden übernommen.
+- Live erkennt Fassungen auch ohne Vorlage: Namen in GROSSBUCHSTABEN allein in der Zeile, mit (Regie) oder mit Leerzeichen vor dem Text; Akte/Szenen an Zeilen wie „ERSTE SZENE“ (auch mit kursivem Untertitel); Doppelrollen aus der Personenliste („Job // Drechslermeister“) und Besetzung.
+
+Neu in Version 94
+- Kuli: Stiftdruck wirkt nur noch sanft – leicht geschriebene Striche werden nicht mehr dünn und pixelig (Bleistift bleibt druckempfindlich).
+- Alle Stifte: Striche werden nie dünner als etwa ein Bildpunkt, auch klein gezoomt – keine abgerissenen Linien. Gilt auch für schon Geschriebenes.
+
+Neu in Version 93
+- Live → Werkzeuge → Änderungen: Antippen einer Änderung springt an die Stelle, schließt das Werkzeug-Fenster und öffnet ein kleines Seitenfenster zum Durchklicken (‹ ›) und Abhaken („✓ Gelesen“). „Durchgehen“ startet bei der ersten.
+- Notizen und Zuweisungen ohne Platz (nach Änderungen im Doc): Antippen springt zur ähnlichsten Stelle; im Seitenfenster „Hier anheften“ oder „Abhaken“, bei mehreren zum Durchklicken. Löschen aller weiterhin über „×“ (zweimal tippen).
+
+Neu in Version 92
+- Neuer Song / neues Notenblatt: ein Takt pro Zeile; weitere Takte und Zeilen kommen ebenfalls mit einem Takt dazu.
+- Kein Springen mehr: Die Stelle auf etwa einem Drittel der Höhe bleibt stehen – in Live bei Hell/Nacht, Schriftgröße, Gewerke, Ansicht, Seiten-Einstellung, neuen Notizen, Einklappen, Naht und Drehen; in Fassung und Noten (PDF) bei Zoom, Fixieren, Einklappen, Naht, Drehen.
+
+Neu in Version 91
+- Live ohne Netz: Jede geöffnete Fassung liegt vollständig auf dem Gerät (samt Bildern). Ohne Netz öffnet sie trotzdem, mit Hinweis „Offline“; kommt das Netz zurück, holt Live den neuesten Stand.
+- Live-Startseite: „Auf diesem Gerät“ listet alle gespeicherten Fassungen – Wechsel zwischen Stücken auch ohne Netz. Notizen in Doppelpult bleiben wie immer auf dem Gerät.
+
+Neu in Version 90
+- Kopfleiste: Trennstrich zwischen „Setlist“ und dem Einklappen-Pfeil.
+
+Neu in Version 89
+- Live, oberste Leiste: Miniatur ganz rechts; Trennstriche zwischen Szene · Schrift/Hell · Werkzeuge/Gewerke · Öffnen · Miniatur.
+
+Neu in Version 88
+- Einklappen: wieder der einfache Pfeil nach unten zum Ausklappen.
+
+Neu in Version 86
+- Einklappen oben rechts: gelbes Tape mit schwarzem Pfeil.
+
+Neu in Version 85
+- Live: Knöpfe der obersten Leiste (Szene, A−/A+, Hell, Werkzeuge, Gewerke, Öffnen) deutlicher vom Hintergrund abgesetzt.
+- Einklappen oben rechts: schwarz mit gelbem Pfeil, wie die Tempo-Anzeige.
+
+Neu in Version 84
+- Auswahlfelder (Taktart, Dauer, Song, Setlist-Fenster, Szene in Live …) öffnen eine eigene Liste im Stil der App direkt unter dem Feld; die Wahl ist mit Tape markiert.
+- Metronom: Knöpfe und Tempo-Feld mit fester Fläche – die Streifen laufen nur dahinter.
+- Knöpfe in Kopfleiste, Song- und Fassungsleiste sowie oben in der Live-Leiste leicht vom Hintergrund abgesetzt.
+- „Blättern“ (oben links) ist eingeschaltet als Tape markiert.
+
+Neu in Version 83
+- Metronom passend zur App: gebürstetes Aluminium (hell) bzw. Graphit (dunkel), Tempo als orange Leuchtanzeige, LEDs bleiben.
+- Vorstellung: Notausgang-Symbol auf einem Stück pinkem Spike-Tape, etwas mehr Abstand zur Lichtleiste; Lichtleiste, geteilte Leiste und Rahmen plastischer.
+- Live: beim Wechsel von Hell/Nacht usw. bleibt die Lesestelle stehen (sprang vorher Richtung Anfang).
+- Live → Werkzeuge: Reihenfolge Ansicht, Folgen, Listen, Seiten-Einstellung. Listen in zwei Spalten: links Text (blau), rechts Cues & Listen (orange); Miniatur entfällt hier. „Rolle wählen“ und Lernmodus nur in der Ansicht „Rolle“.
+- Live → Gewerke: Häkchen und Auswahlkreise im Stil der App.
+
+Neu in Version 82
+- Metronom als Holzleiste im Stil eines alten Pult-Metronoms; Tempo auf einem hellen Schild. Leuchten als plastische LEDs, Lichtleiste, geteilte Leiste und Rahmen mit Glanzkante.
+- Notenleiste: Knöpfe in Gruppen, Trennstrich zwischen „+ Blatt“ und „Breiter“, Songtitel etwas schmaler.
+- Vorstellung beenden: grünes Notausgang-Schild oben rechts.
+- Setlist und Sicherung: Fenster nie größer als der Bildschirm, die Songliste scrollt im Fenster. Automatische Sicherungen: drei sichtbar, der Rest scrollt.
+- „Alles sichern“: der Knopf bleibt sichtbar (gedimmt, mit Drehsymbol); Fortschritt mit Zahl der PDFs und Laufzeit groß im Fenster.
+- Live → Werkzeuge: Listen als farbige Karten, gleichmäßige Abstände in allen Bereichen, Seitenzahlen als beschriftete Zeilen.
+
+Neu in Version 81
+- Live: Werkzeuge → Seitenzahlen → „Leere Seitenenden: kürzen“. Spart nur in der Anzeige den Leerraum am Ende kurzer Seiten (z. B. vor einer neuen Szene). Seiten, Seitenzahlen und PDF-Export bleiben genau gleich – der Export nimmt immer die volle A4-Länge.
+
+Neu in Version 80
+- Live: Seitenstreifen mit Seitenzahl fehlte vor erkannten Szenenköpfen (z. B. „ERSTER AKT“, „ERSTE SZENE“) – jetzt immer sichtbar.
+
+Neu in Version 79
+- Live: Seitenumbrüche aus dem Doc gelten vor jedem neuen Abschnitt – Überschrift, Akt, Aufzug, Szene, Bild, Zwischenspiel, Vorspiel, Nachspiel, Prolog, Epilog, Finale, Pause oder Szenenkopf in fetten Großbuchstaben. Alle anderen übergeht Live (feine gestrichelte Linie).
+- Werkzeuge → Seitenzahlen: „Seitenumbrüche aus dem Doc: vor Abschnitten · alle · keine“.
+- Antippen eines Seitenstreifens oder einer gestrichelten Linie: für diese Stelle selbst festlegen („Hier keine neue Seite“ / „Hier neue Seite“). Zurücksetzen unter Werkzeuge → Seitenzahlen.
+
+Neu in Version 78
+- Live: Seitenumbrüche aus dem Doc gelten nur noch vor einem neuen Akt oder einer neuen Szene (Zeile mit „Akt“ oder „Szene“). Alle anderen übergeht Live und lässt den Text weiterlaufen.
+- Ein Umbruch, auf den im Doc erst Leerzeilen folgen, gilt für den nächsten Absatz mit Text (ging vorher verloren).
+- Übergangene Umbrüche hinterlassen keinen Abstand mehr.
+
+Neu in Version 77
+- Live: A4-Seiten wie gedruckt. Live bricht selbst um, in der angezeigten Darstellung; eine neue Seite nur, wenn die Seite voll ist oder wo im Doc ein Seitenumbruch eingefügt wurde. Seitenzahlen sind die von Live.
+- Ein Absatz zählt mit seinen Notizen und Marken – passt beides nicht mehr, kommt er auf die nächste Seite. Auch nach Moduswechsel (Gewerke, Soufflage, Schrift).
+- Rollennamen und Überschriften bleiben nicht allein unten auf einer Seite.
+- PDF: jede Live-Seite ein A4-Blatt, kurze Seiten aufgefüllt.
+
+Neu in Version 76
+- Live: Seiten nur noch dort getrennt, wo auch das Doc eine neue Seite beginnt (keine Zusatzseiten „7a“ mehr).
+- PDF: je Doc-Seite genau ein Blatt. Ist eine Seite länger als A4, wird das Blatt länger – Notizen liegen nie mehr über einer Trennung.
+- PDF: Zuweisungs- und Tempo-Marken in ihren Farben (vorher dunkel ohne Hintergrund).
+- PDF: Bilder, die Google nicht direkt herausgibt, werden aus Googles eigenem PDF des Docs genommen.
+
+Neu in Version 75
+- PDF der Live-Fassung als echtes PDF: durchsuchbarer Text in den Live-Schriften an genau der Stelle wie auf dem Bildschirm, Handschrift je Absatz als Bild-Paket, Marken und Linien als Grafik. (Fehlen die Schriften, wird wie bisher ein Seitenabbild erstellt.)
+- Bilder: gibt Google ein Bild nicht direkt heraus, holt die App es aus Googles Export des Docs.
+- Beschriftung der Zuweisungs-Marken wird wie auf dem Bildschirm am Rand der Marke abgeschnitten.
+
+Neu in Version 74
+- Live: eine Doc-Seite, die länger wäre als ein A4-Blatt, bekommt schon in der Anzeige eine Zusatztrennung („Seite 7a“) an einem Absatzanfang. Dadurch ist jede Live-Seite genau ein PDF-Blatt – keine unerwarteten Zusatzseiten und Lücken mehr.
+- PDF: Handschrift landet immer ganz auf dem Blatt ihres Absatzes, auch wenn sie über einen Seitenstreifen ragt.
+
+Neu in Version 73
+- PDF der Live-Fassung als Abbild: jede Seite genau so, wie sie in Doppelpult zu sehen ist – Schrift, Modus, Handschrift, Textmarker, Zuweisungen und Bilder an genau ihrer Stelle. Kürzere Seiten werden unten in der Papierfarbe aufgefüllt, längere an einer Zeilenlücke geteilt (7, 7a).
+
+Neu in Version 72
+- PDF der Live-Fassung: alle Notizen kommen mit – auch die am rechten Rand (sie werden jetzt nach Spaltenbreite gesetzt und laufen nie über das Blatt) und die auf Bildern. Zusammengehörige Notizen bleiben beisammen, nichts verrutscht mehr in Teilen.
+- Bilder aus dem Doc erscheinen im PDF.
+- Zuweisungs-Marken im Text störten das Wiederfinden der Notizen – behoben.
+
+Neu in Version 71
+- PDF der Live-Fassung (Export und Sicherung) so wie angezeigt: mit der Schrift der Live-Fassung (Literata, Sofia Sans), im gewählten Modus (Hell, Sepia, Abend, Nacht) und mit allen handschriftlichen Notizen an ihrer Stelle.
+- Notizen in PDFs und Noten werden immer in Tagesfarben eingezeichnet, wenn das Papier hell ist (auch wenn Doppelpult gerade im Nachtmodus läuft).
+
+Neu in Version 70
+- Doppelpult bittet den Browser, die Daten dauerhaft zu behalten (nicht von sich aus löschen).
+- „Sicherung“ zeigt belegten und freien Speicher und ob die Daten dauerhaft geschützt sind.
+- Beim Start (höchstens einmal am Tag) ein Hinweis, wenn der Speicher knapp wird oder die letzte Sicherung als Datei länger als 14 Tage her ist.
+
+Neu in Version 69
+- „Alles sichern“ und „Diese Setlist sichern“ legen auch die Live-Fassung als PDF mit allen Notizen und Zuweisungen in den Ordner „PDFs mit Eintragungen“ (Googles PDF des Docs; offline so wie angezeigt). Erreichbar ist dabei die gerade offene Live-Fassung.
+
+Neu in Version 68
+- Live: frei gesetzte Zuweisungen bleiben auch auf dem iPad liegen (Safari brach das Ablegen manchmal ab). Rechts der Mitte klappen sie nach links auf, wie die Marken am Rand.
+- Ältere Zuweisungen mit doppelter Kennung werden bereinigt – sie lassen sich jetzt ebenfalls frei setzen.
+- „Diese Setlist sichern“ (früher „Setlist weitergeben“), zusätzlich als Knopf „Sichern“ im Setlist-Fenster.
+
+Neu in Version 67
+- Tempo in der Fassung: beim Zurückscrollen über eine zugewiesene Tempo-Marke gilt wieder das erste Tempo des Songs.
+
+Neu in Version 66
+- Live: Zuweisungen lassen sich frei setzen – sie bleiben genau dort, wo du sie loslässt, und wandern mit dem Absatz darunter mit.
+
+Neu in Version 65
+- Lasso in der Live-Fassung: Kopieren, Duplizieren und Löschen wie im PDF; mit dem Lasso auf eine Stelle tippen bietet „Einsetzen“ an.
+- Die Zwischenablage gilt überall: in Live kopieren und im PDF oder in den Noten einsetzen – und umgekehrt (Größe wird angepasst).
+
+Neu in Version 64
+- Live: schmale Trennung zwischen den Seiten, die Seitenzahl steht unter dem Blatt; gezählt wird wie im Doc ab dem Titelblatt (= Seite 1).
+
+Neu in Version 63
+- Live, „Fassung als PDF – wie angezeigt“: jede Doc-Seite beginnt ein neues Blatt mit der Seitenzahl des Docs. Passt eine Seite nicht drauf (größere Schrift), heißt das Zusatzblatt „7a“.
+
+Neu in Version 62
+- Live: Seitentrennungen hängen fest am Text – gleich bei jeder Schriftgröße, jeder Ansicht (auch Soufflage) und egal welche Gewerke eingeblendet sind.
+
+Neu in Version 61
+- Live: Seiten wie im Google Doc – die Fassung ist in einzelne Blätter geteilt, mit den Seitenzahlen, die im Doc selbst stehen (Kopf- oder Fußzeile). Ohne gedruckte Seitenzahlen zählt die App selbst.
+
+Neu in Version 60
+- Song-Zuweisung schaltet auf das erste Tempo des Songs; eine zusätzlich zugewiesene Tempo-Marke (z. B. das zweite Tempo) gilt, sobald sie erreicht ist.
+- Zugewiesene Tempi in der Fassung (PDF und Live) lassen sich einklappen (›), wie die Song-Marken.
+- Song-Marken in der Fassung sehen aus wie Tape.
+- Knopf „Stelle 2/3“ normal hell statt ausgegraut.
+- Metronom-Farben: „Hellgrau“ entfällt (glich im Dunkeln „Kontrast“).
+- Live: Seitenzahl nur als Zahl im Rand (überdeckt keinen Text mehr), in der Miniatur steht im gelben Feld „S. 28“.
+- Live: Seitenumbrüche aus dem Doc erscheinen als Abstand mit Linie; Szenen ohne Überschriften-Format (z. B. „ERSTE SZENE“ fett in Großbuchstaben) bekommen Abstand, Linie und stehen in der Szenen-Auswahl.
+- Live: Bei Absätzen mit Leerzeilen per Umschalt+Enter wird nur der angetippte Block gewählt; „Anweisung darunter“ setzt die Anweisung direkt darunter.
+
+Neu in Version 59
+- Live: Mit offener Miniatur blendet sich die Leiste oben wieder normal aus; geschlossen wird über das × in der Miniatur.
+
+Neu in Version 58
+- Live: Seitenzahlen sind von Anfang an eingeschaltet.
+- Live: Die Miniatur liegt halbdurchsichtig über der Fassung, statt sie schmaler zu machen – nichts springt mehr beim Öffnen und Schließen. Mit Miniatur bleibt die Leiste oben stehen, dazu ein × zum Schließen.
+
+Neu in Version 57
+- Live: Seitenzahlen wie im Google-PDF (Werkzeuge → Seitenzahlen → „Wie Google-PDF“). Am Rand steht „S. 12“ mit feiner Linie, wo die Seite im PDF beginnt.
+
+Neu in Version 56
+- Live: „Gewerke“ öffnet nur die Liste, ohne Tastatur. Erst Antippen eines Namens schaltet ihn zum Umbenennen frei.
+- Live: Zuweisungen auf Bild-Absätzen (z. B. Bühnenplan) landen nicht mehr zusätzlich unter „Ohne Platz“.
+
+Neu in Version 55
+- Songs, die an mehreren Stellen der Fassung zugewiesen sind: oben neben dem Songnamen erscheint „Stelle 2/3 ▸“.
+  Tippen springt zur nächsten Stelle (am Ende wieder zur ersten), Gedrückthalten zeigt eine Liste aller Stellen
+  mit Szene und Textanfang (Live) bzw. Seitenzahl (PDF). Funktioniert in PDF und Live.
+
+Neu in Version 54
+- Live: Zuweisungen schalten den Song schon während des Scrollens um, nicht erst wenn der Text stillsteht.
+
+Neu in Version 53
+- Song wechseln (Pfeile, Liste, Auswahl): die Fassung springt zuverlässig an die Zuweisung – auch in Live. Liegt die nächste Zuweisung dicht dahinter, steht die Stelle etwas tiefer, damit nicht gleich der folgende Song übernimmt.
+
+Neu in Version 52
+- Live-Fassung: Die Kopfleiste kommt beim Hochscrollen erst nach einem deutlichen Stück zurück, nicht schon beim kleinsten Zucken.
+
+Neu in Version 51
+- Neuer Song, neue Notiz, neue PDFs und Songs aus anderen Setlists kommen direkt hinter den Song, der gerade offen ist.
+- Notizen-Menü (in Live und im PDF): „Alle Zuweisungen dieser Fassung entfernen“ – Handschrift bleibt, rückgängig möglich.
+
+Neu in Version 50
+- Live-Fassung: Text bleibt dunkel und gut lesbar, auch wenn das iPad im dunklen Modus ist.
+- Zuweisungen in Live: gibt es Zuweisungen von Hand, gelten nur diese – Songnamen im Text schalten nicht mehr dazwischen.
+- Neue Notenblätter: immer 8 Systeme je Blatt, oben Platz für Titel und Angaben.
+- Miniatur in Live: läuft fließend mit, ziehen schiebt den Text wie mit dem Finger.
+
+Neu in Version 49
+-----------------
+Live-Fassung: Handschrift und Zuweisungen liegen jetzt direkt im Text und scrollen ohne Verzögerung mit;
+mehrere Zuweisungen am selben Absatz stehen untereinander statt übereinander.
+Tempi der Fassung zuweisen: eine Tempo-Marke aus den Noten in die Fassung ziehen (PDF oder Live). Sobald die
+Stelle ins untere Drittel kommt, stellt sich das Metronom auf Tempo und Takt ein. Antippen stellt sofort ein,
+× entfernt, Ziehen verschiebt.
+Neue Notenblätter: mehr Abstand zwischen den Notenzeilen (7 bzw. 8 Zeilen je Blatt); der Rand eigener Blätter
+ist jetzt sichtbar. Ältere Blätter behalten ihr Raster.
+Automatisch sichern (Sicherung): alle 5 Minuten eine Kopie aller Eintragungen auf dem Gerät, die letzten 10
+lassen sich zurückholen.
+
+2. Auf dem iPad installieren
+----------------------------
+1. Die Adresse in Safari öffnen und einmal vollständig laden lassen (mit Netz).
+2. Teilen-Knopf → „Zum Home-Bildschirm“ → Hinzufügen.
+3. Ab jetzt nur noch über das Symbol auf dem Home-Bildschirm öffnen.
+4. Erst dort PDFs laden. Die installierte App hat einen eigenen Speicher; was du vorher
+   im Safari-Fenster angelegt hast, erscheint dort nicht.
+Danach läuft die App auch im Flugmodus.
+
+3. Daten aus der Testversion mitnehmen
+--------------------------------------
+In der Testversion: Sicherung → „Alles sichern“ (eine ZIP-Datei mit allen PDFs und Strichen).
+In der installierten App: Sicherung → „Datei laden“ → diese Datei wählen → „Alles ersetzen“.
+
+4. Sichern und Notfall
+----------------------
+Die Daten liegen nur auf dem iPad. Sie gehen verloren, wenn du das Symbol vom
+Home-Bildschirm entfernst oder die Website-Daten löschst. Ein Punkt am Knopf „Sicherung“
+zeigt, dass sich seit der letzten vollständigen Sicherung etwas geändert hat. Dann:
+Sicherung → „Alles sichern“ → „Datei sichern“ → „In Dateien sichern“ (am besten iCloud Drive).
+
+Die ZIP-Datei enthält den Ordner „PDFs mit Eintragungen“: je Setlist die Fassung und die
+nummerierten Noten mit fest eingezeichneten Strichen, dazu „Setlist.txt“ mit Tempo,
+Taktart und Fassungsseite. Im Notfall in der Dateien-App auf die ZIP-Datei tippen
+(sie wird entpackt) und die PDFs in forScore importieren.
+
+Am Mac Setlists bauen
+---------------------
+Dieselbe Adresse am Mac in Safari öffnen (Ablage → „Zum Dock hinzufügen“ macht eine App daraus).
+PDFs einfach aufs Fenster oder in die Songliste ziehen, Reihenfolge und Tempi festlegen.
+Dann Sicherung → „Setlist weitergeben“. Die ZIP-Datei per AirDrop oder iCloud Drive aufs iPad,
+dort Sicherung → „Datei laden“ → „Setlist übernehmen“. Was auf dem iPad schon liegt,
+bleibt unverändert, auch deine Eintragungen. Am Mac kannst du die Datei auch einfach aufs
+Fenster ziehen.
+
+5. Neue Version einspielen
+--------------------------
+Den Ordner auf dem Webspace durch den neuen ersetzen. Die App holt sich die neue Fassung,
+sobald sie das nächste Mal mit Netz geöffnet wird, und nutzt sie ab dem übernächsten Start.
+Deine Daten bleiben dabei erhalten, solange die Adresse dieselbe bleibt.
+Bei einem Umzug auf eine andere Adresse vorher „Alles sichern“ und dort wieder laden.
+
+6. Für den Apple Pencil
+-----------------------
+- iPadOS 18.2 oder neuer verwenden, dann meldet Safari die feinen Zwischenpunkte des Stifts.
+- Stromsparmodus ausschalten; er halbiert die Abtastrate des Pencil.
+- Einstellungen → Apple Pencil → „Kritzeln“ ausschalten, falls der erste Strich einmal hängt.
+- Der Doppeltipp am Stift erreicht Webseiten nicht. Ersatz: mit zwei Fingern kurz aufs Blatt tippen.
+
+Enthaltene fremde Bausteine
+---------------------------
+- pdf.js 3.11.174 (Mozilla, Apache-Lizenz 2.0), siehe vendor/LICENSE-pdfjs.txt
+- pdf-lib 1.17.1 (MIT-Lizenz), siehe vendor/LICENSE-pdf-lib.txt
+- @pdf-lib/fontkit 1.1.1 (MIT-Lizenz), siehe vendor/LICENSE-fontkit.txt
+- Literata und Sofia Sans für PDFs der Live-Fassung (SIL Open Font License 1.1), siehe vendor/pdffonts/OFL-*.txt
+- Ersatzschriften für PDFs (Liberation Sans, Foxit), siehe vendor/standard_fonts/LICENSE_*
+- Sofia Sans und Sofia Sans Extra Condensed (SIL Open Font License 1.1), siehe fonts/LICENSE-*.txt

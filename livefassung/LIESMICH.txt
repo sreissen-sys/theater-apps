@@ -1,0 +1,151 @@
+LIVE-FASSUNG – Prototyp
+=======================
+
+Liest eine Google-Docs-Fassung live mit, blendet Gewerke nach ihrer Farbe ein/aus
+und fügt eigene Anweisungen direkt ins Doc ein.
+
+WIE DAS DOC AUSSEHEN SOLL
+- Ganz oben (vor der ersten Überschrift) eine Legende: je Zeile ein Gewerk-Name,
+  in der Farbe dieses Gewerks. Beispiel: „Kostüm“ lila, „Requisite“ grün, „Band“ rot,
+  „Ton“ petrol, „Licht“ orange, „Technik“ blau.
+- Akte/Szenen als Überschrift 1 / Überschrift 2 formatieren (für den Szenen-Sprung).
+- Sonst nichts Neues: Anweisungen einfach in der Gewerk-Farbe schreiben.
+- Schwarz = Text der Spielenden, schwarz kursiv = Regieanweisungen für die Spielenden.
+  Alle Gewerke (auch Licht und Ton) haben eine eigene Farbe in der Legende.
+- Eigene Einträge aus der App: je eine Leerzeile davor und danach; Gewerke kursiv,
+  Text der Spielenden nicht kursiv (Fett/Kursiv im Dialog änderbar).
+- Ein Tipp genügt: auf einen Teil des eigenen Gewerks → Bearbeiten/Löschen;
+  auf anderen Text → Einfügemarke genau dort („Hier einfügen“ oder „Darunter“);
+  neben den Text → Auswahl weg. Marke mit ‹ › bzw. Pfeiltasten verschieben.
+  Am Rechner: Enter = einfügen/bearbeiten, Entf = löschen, Esc = abbrechen.
+- Bearbeiten/Löschen: eigene Einträge und alle Teile im eigenen Gewerk („ich“),
+  auch mitten in gemischten Zeilen (auf den gewünschten Teil tippen).
+- Farben, die nicht in der Legende stehen, erscheinen als eigener Schalter (z. B. „Magenta“);
+  den Namen kann man unter „Gewerke“ ändern.
+
+WERKZEUGE (Knopf oben)
+- Ansichten: Normal · Inspizienz (Cue-Nummern groß, „Nächste Cues“) · Rolle (eigene Repliken
+  hervorgehoben, Lernmodus deckt eigenen Text ab) · Soufflage (nur gesprochener Text, Hänger antippen).
+- Änderungen seit dem letzten Besuch (Vorher/Nachher, nach Gewerk gefiltert; roter Zähler am Knopf).
+- Auszüge je Gewerk und Szene · Cue-Listen mit Prüfung (Lücken, Doppelte, Reihenfolge, Stichwort)
+  · Szenenplan & Rufbuch. Alles druckbar (PDF) und als Tabelle (CSV für Excel/Numbers).
+- Fassung als PDF – wie angezeigt: nur die eingeblendeten Gewerke, neu gesetzt (A4, mit Stand und
+  Seitenzahlen). Etwa nur Text und Musik-Cues für Ersatzspieler*innen.
+- Damit Rollen erkannt werden: Repliken als „NAME<Tab>Text“ (oder „NAME: Text“);
+  „Ri/WERTHER“ = Person Ri in der Rolle Werther; „ALLE“ zählt für alle.
+  Auch ohne Vorlage: NAME in GROSSBUCHSTABEN allein in der Zeile (Text darunter bis zur Leerzeile),
+  „NAME (Regie)“ oder „NAME     Text“ mit Leerzeichen. Doppelrollen aus der Personenliste
+  („Job // Drechslermeister     Furkan Yaprak“) werden derselben Person zugeordnet.
+- Gewerke: oben im Doc je Gewerk eine kurze Zeile in seiner Farbe (z. B. „Musik“ in Lila, „Bühne“ in Orange).
+  Ohne diese Legende heißen die Gewerke nach der Farbe („Violett“, „Orange“).
+- Cues werden erkannt als „L: 12 (10sec) Text“, „Aktion 3“ … in einer Gewerk-Farbe.
+
+GOOGLE-ZUGANG EINRICHTEN (einmalig, ca. 20 Minuten)
+In der fertigen App macht das nur der Anbieter (du), nie die Nutzer*innen.
+
+1. https://console.cloud.google.com → neues Projekt „Live-Fassung“ anlegen.
+   Die PROJEKTNUMMER steht auf der Startseite des Projekts (nur Ziffern).
+2. „APIs & Dienste“ → „Bibliothek“: aktivieren
+   - Google Docs API
+   - Google Drive API
+   - Google Picker API
+3. „OAuth-Zustimmungsbildschirm“ (Google Auth Platform):
+   - Nutzertyp „Extern“, App-Name „Live-Fassung“, deine E-Mail.
+   - Bereich (Scope) hinzufügen: .../auth/drive.file
+   - Unter „Zielgruppe“ dich und Test-Personen als Testnutzer eintragen
+     (solange die App nicht von Google geprüft ist, dürfen nur Testnutzer sie verwenden).
+4. „Anmeldedaten“ → „Anmeldedaten erstellen“ → „OAuth-Client-ID“
+   - Typ „Webanwendung“
+   - Autorisierte JavaScript-Quellen: die Adresse, unter der die Seite liegt,
+     z. B. https://livefassung.netlify.app (ohne Schrägstrich am Ende)
+   → CLIENT-ID kopieren (endet auf .apps.googleusercontent.com)
+5. „Anmeldedaten erstellen“ → „API-Schlüssel“
+   - Schlüssel einschränken: Website-Einschränkung auf dieselbe Adresse,
+     API-Einschränkung auf „Google Picker API“.
+   → API-SCHLÜSSEL kopieren
+6. index.html, live-sw.js, regie.js und den Ordner vendor auf die Adresse hochladen (Netlify, GitHub Pages, Cloudflare Pages …),
+   live-sw.js sorgt dafür, dass Live auch ohne Netz startet.
+   Seite öffnen → „Google-Fassung öffnen“ → die drei Werte eintragen.
+7. Fest einbauen, damit es nie wieder jemand eintippen muss:
+   „Google-Zugang ändern“ → „Als Datei sichern“ → die Datei google.json neben index.html
+   hochladen (bei Doppelpult neben live.html). Ab dann kennt jedes Gerät den Zugang,
+   der Knopf „Google-Zugang ändern“ verschwindet. Nutzer*innen melden sich nur noch
+   mit ihrem Google-Konto an.
+   Die drei Werte sind kein Geheimnis (jede Web-App mit Google-Anmeldung zeigt sie im
+   Browser); geschützt sind sie durch die Einschränkung auf deine Adresse (Schritt 4 und 5).
+
+WICHTIG
+- Die App bekommt nur Zugriff auf Dokumente, die man im Google-Fenster selbst auswählt
+  (Bereich drive.file). Nichts wird auf einem fremden Server gespeichert.
+- Einfügen geht nur mit Bearbeitungsrechten im Doc. Ohne sie: nur lesen.
+- Eingefügte Zeilen stehen sofort im Doc (kein Vorschlagsmodus). „Rückgängig“ erscheint
+  8 Sekunden lang nach dem Einfügen.
+- Änderungen anderer kommen nach ca. 10 Sekunden an.
+- Für die Veröffentlichung (alle Google-Konten, nicht nur Testnutzer) muss Google die App
+  prüfen: Datenschutzerklärung, eigene Domain, kurze Beschreibung. drive.file ist ein
+  „nicht sensibler“ Bereich, die Prüfung ist dadurch vergleichsweise einfach.
+
+
+NEU: Inspizienz, Übersicht, Folgen
+- Inspizienz (Werkzeuge → Ansicht „Inspizienz“): wählen, welche Gewerke gecuet werden (nur die bekommen
+  Nummern am Rand und stehen in der Liste), und wie viele nächste Cues angezeigt werden (5 bis 50).
+- Ansicht wechseln schließt die Werkzeuge nicht mehr. Zu: ✕ oder neben das Fenster tippen.
+- Miniatur (Knopf oben neben „Szene …“): die ganze Fassung verkleinert als Streifen am rechten Rand,
+  läuft fließend mit; der gelbe Streifen in der Mitte zeigt, wo du gerade liest. Ziehen schiebt den Text
+  wie mit dem Finger (nach oben wischen = weiterlesen, mit Schwung), Tippen springt an die Stelle.
+  Sie liegt halbdurchsichtig über dem Text; × oben in der Miniatur schließt sie.
+- Text suchen: unter Werkzeuge.
+- „Fassung als PDF – wie angezeigt“ nutzt die Schriften der Live-Fassung und den gewählten Modus (Hell, Sepia,
+  Abend, Nacht). Dafür den Ordner „vendor“ aus dieser ZIP mit hochladen (neben index.html); ohne ihn wird Times genommen.
+- Fassungen ohne Überschriften-Formate: Szenenzeilen (fett in Großbuchstaben oder mit „Szene“, „Akt“, „Bild“,
+  „Verwandlung“, „Vorspiel“ …) bekommen Abstand und Linie und stehen in „Szene …“. Seitenumbrüche aus dem Doc
+  erscheinen als Abstand mit Linie.
+- Absätze mit Leerzeilen per Umschalt+Enter: Antippen wählt nur den Block (bis zur nächsten Leerzeile);
+  „Anweisung darunter“ setzt sie direkt unter diesen Block.
+- A4-Seiten (von Anfang an an; ausschalten unter Werkzeuge → Seitenzahlen): Live teilt die Fassung selbst
+  in A4-Seiten, in der gerade angezeigten Darstellung – genau so, wie sie im PDF gedruckt wird. Eine neue Seite
+  beginnt, wenn die Seite voll ist – oder an einem Seitenumbruch aus dem Doc, wenn danach ein neuer Abschnitt
+  beginnt: eine Überschrift (Format Überschrift 1/2), eine Zeile mit Akt, Aufzug, Szene, Bild, Zwischenspiel,
+  Vorspiel, Nachspiel, Prolog, Epilog, Finale oder Pause, oder ein Szenenkopf in fetten Großbuchstaben.
+  Alle anderen Umbrüche aus dem Doc übergeht Live (feine gestrichelte Linie). Werkzeuge → Seitenzahlen →
+  „Seitenumbrüche aus dem Doc“: vor Abschnitten (Standard) · alle · keine. Antippen eines Seitenstreifens oder
+  einer gestrichelten Linie legt es für diese eine Stelle selbst fest („Hier keine neue Seite“ / „Hier neue Seite“).
+  „Leere Seitenenden: kürzen“ spart nur in der Anzeige den Leerraum am Ende kurzer Seiten; Seiten, Seitenzahlen
+  und der PDF-Export bleiben genau gleich (der Export nimmt immer die volle A4-Länge). Getrennt wird zwischen Absätzen; Rollennamen und Überschriften bleiben nicht allein unten.
+  Ein Absatz zählt mit seinen Notizen und Marken: passt beides nicht mehr, kommt er auf die nächste Seite.
+  Wechselst du den Modus (Gewerke, Soufflage, Schriftgröße …), bricht Live neu um. Die Seitenzahlen sind die
+  von Live und können vom Google Doc abweichen. „Fassung als PDF – wie angezeigt“ übernimmt die Seiten 1:1.
+- Verbunden bleiben: Die Google-Anmeldung gilt jeweils eine Stunde. Die App erneuert sie rechtzeitig beim
+  nächsten Antippen (kurz kann ein Google-Fenster aufblitzen) und holt nach Standby, Funkloch oder Rückkehr
+  in die App sofort den neuesten Stand.
+- Folgen (Werkzeuge → Folgen): „Meine Lesestelle teilen als …“ (z. B. Inspizienz). Andere wählen unter
+  „Folgen:“ diese Person und scrollen automatisch mit. Selbst scrollen pausiert das Folgen kurz;
+  oben „▶ Folge …“ antippen beendet es.
+  Über Google braucht die teilende Person Bearbeitungsrechte am Doc, die Folgenden nur Leserechte.
+
+OFFLINE
+- Jede Fassung, die einmal geöffnet wurde, liegt vollständig auf dem Gerät (samt Bildern). Ohne Netz öffnet Live
+  sie trotzdem – mit dem Hinweis „Offline – Stand vom …“. Kommt das Netz zurück, holt Live den neuesten Stand.
+- Startseite → „Auf diesem Gerät“: alle gespeicherten Fassungen, auch ohne Netz zum Wechseln zwischen Stücken.
+  „×“ entfernt eine Fassung vom Gerät (das Google Doc bleibt unberührt).
+- Eigene Einträge ins Doc brauchen Netz; Notizen in Doppelpult werden immer auf dem Gerät gespeichert.
+
+REGIE-MODUS (Schritt 1, Prototyp)
+- Werkzeuge → „Regie-Modus“ (nur mit Bearbeitungsrechten am Doc). Der Text wird direkt in Live geschrieben;
+  das Google Doc bleibt der Speicher, niemand muss mehr ins Doc.
+- Mehrere können gleichzeitig schreiben: Eigene Änderungen gehen etwa jede Sekunde ans Doc, Änderungen der
+  anderen kommen alle 1,5 s dazu – die eigene Schreibstelle bleibt dabei stehen.
+- Oben rechts: wer gerade im Regie-Modus ist; „schreibt …“ und ein Fähnchen mit Namen an der Stelle im Text.
+- Werkzeuge: Rückgängig/Wiederholen (nur eigene Änderungen), Fett, Kursiv (Regieanweisung), Absatzformat
+  (Text, Überschrift 1 = Akt, Überschrift 2 = Szene …), Gewerk-Knöpfe aus der Legende (Auswahl einfärben;
+  „Text“ = schwarz). Tab und Umschalt+Enter (Zeilenumbruch) gehen wie im Doc.
+- Tabellen und Bilder werden angezeigt, aber noch nicht bearbeitet (kommt mit Schritt 3).
+- Alle anderen sehen die Änderungen in der normalen Live-Ansicht nach wenigen Sekunden (Live fragt alle 3 s nach).
+- Benötigt die Dateien regie.js und vendor/pm-1.min.js (ProseMirror, MIT-Lizenz, siehe vendor/LICENSE-prosemirror.txt).
+
+SCHRIFT UND EIGENE MARKIERUNGEN
+- Werkzeuge → Ansicht → Schrift: Literata (Standard), Atkinson Hyperlegible (besonders gut lesbar), Arial, Calibri,
+  Verdana, Roboto, Open Sans, Times New Roman, Georgia, Merriweather, Courier New. Gilt je Gerät.
+  (Die Schriften kommen von Google Fonts; ohne Netz wird die nächstähnliche vorhandene genommen.)
+- Eigene Markierungen: Text mit dem Finger auswählen (lange drücken, ziehen), dann eine Farbe antippen; ✕ entfernt.
+  Nur auf diesem Gerät, je Fassung. Ändert sich die Fassung, wandert die Markierung mit dem Text mit.

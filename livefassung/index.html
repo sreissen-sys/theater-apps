@@ -2664,7 +2664,7 @@ function pgDraw0() {
     aPrev = top + (Math.abs(d) >= 1 ? Math.round(cur + d) - cur : 0) - .75 * em - tx;
   }
 }
-function pgLater(ms) { clearTimeout(PG.rt); PG.rt = setTimeout(pgDraw, ms); }
+function pgLater(ms) { clearTimeout(PG.rt); PG.rt = setTimeout(() => { const q = Date.now() - (window.__dpPenT || 0); if (q < 1800) return pgLater(1900 - q); pgDraw(); }, ms); }   // während in Doppelpult geschrieben wird: erst nach einer kurzen Schreibpause neu umbrechen (sonst hakt der Stift und die Seite rückt mitten im Schreiben)
 async function exportViewPdf() {
   $('tool-dlg').close(); toast('PDF wird gesetzt …', 20000);
   try {
@@ -2674,7 +2674,7 @@ async function exportViewPdf() {
   } catch (e) { toast('PDF: ' + (e.message || 'ging nicht'), 6000); }
 }
 /* ---------- Live selbst aktualisieren (allein; in Doppelpult macht das Doppelpult) ---------- */
-const APPV = 123;                                           // bei jeder neuen Version hochzählen
+const APPV = 124;                                           // bei jeder neuen Version hochzählen
 async function appFresh() { try { const r = await fetch(location.pathname + '?v=' + Date.now(), { cache: 'no-store' }); const m = /const APPV = (\d+);/.exec(await r.text()); return m ? +m[1] : 0; } catch (e) { return 0; } }
 async function appRenew() {
   if (!(await netOk())) { toast('Ohne Netz lässt sich Live nicht aktualisieren.', 4000); return; }

@@ -655,7 +655,39 @@ const colorOf = ts => { const c = ts?.foregroundColor?.color?.rgbColor; return c
 function loadScript(src) {
   return new Promise((res, rej) => { const old = document.querySelector('script[src="' + src + '"]'); if (old && old.dataset.ok) return res(); if (old) { old.addEventListener('load', res); old.addEventListener('error', () => rej(new Error('Google-Baustein nicht erreichbar'))); return; } const s = document.createElement('script'); s.src = src; s.async = true; s.onload = () => { s.dataset.ok = 1; res(); }; s.onerror = () => { s.remove(); rej(new Error('Google-Baustein nicht erreichbar')); }; document.head.append(s); });
 }
+/* ---------- Dauer-Anmeldung über die eigene Netlify-Funktion (/api/gauth) ----------
+   Einmal anmelden (mit Zustimmung), danach holt Live sich jede Stunde still einen neuen Zugang – wochenlang, ohne Fenster.
+   Gibt es die Funktion nicht (z. B. andere Adresse), gilt der alte Weg: Anmeldung für eine Stunde, Erneuern beim Antippen. */
+const SRV = { st: null, ready: false, has: false };
+function srvCheck() {
+  if (SRV.st) return SRV.st;
+  if (location.protocol !== 'https:' || window.__lfTest) return (SRV.st = Promise.resolve(false));
+  return (SRV.st = fetch('/api/gauth', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(j => { SRV.ready = !!j?.ready; SRV.has = !!j?.has; return SRV.ready; }).catch(() => { SRV.st = null; return false; }));
+}
+async function srvPost(body) {
+  const r = await fetch('/api/gauth', { method: 'POST', cache: 'no-store', headers: { 'content-type': 'application/json', 'x-lf': '1' }, body: JSON.stringify({ ...body, clientId: cfg().clientId }) });
+  const j = await r.json().catch(() => ({})); if (!r.ok) throw Object.assign(new Error(j.error || ('Fehler ' + r.status)), { status: r.status }); return j;
+}
+const setTok = j => { S.token = j.access_token; S.tokenExp = Date.now() + ((j.expires_in || 3600) - 120) * 1000; $('relogin').hidden = true; srvTimer(); return S.token; };
+async function srvRefresh() {                               // still, ohne Fenster
+  if (!SRV.has || isOffline()) return null;
+  if (SRV.p) return SRV.p;
+  SRV.p = srvPost({ op: 'refresh' }).then(setTok, e => { if (e.status === 401) SRV.has = false; return null; }).finally(() => { SRV.p = null; });
+  return SRV.p;
+}
+function srvTimer() { clearTimeout(SRV.t); if (SRV.has) SRV.t = setTimeout(() => srvRefresh(), Math.max(60e3, S.tokenExp - Date.now() - 5 * 60e3)); }   // rechtzeitig vor Ablauf erneuern
+async function srvLogin(prompt) {                           // einmaliges Anmeldefenster; der Code wird auf dem Server gegen die Dauer-Anmeldung getauscht
+  const c = cfg(); await loadScript('https://accounts.google.com/gsi/client');
+  return new Promise((res, rej) => {
+    const cc = google.accounts.oauth2.initCodeClient({ client_id: c.clientId, scope: SCOPE, ux_mode: 'popup', select_account: prompt === 'select_account', prompt: 'consent',
+      callback: async r => { if (r.error) return rej(new Error(r.error)); try { const j = await srvPost({ op: 'code', code: r.code }); if (j.keep) SRV.has = true; else toast('Angemeldet – aber Google hat keine Dauer-Anmeldung erteilt. Unter myaccount.google.com → Sicherheit → Drittanbieter-Zugriff die App entfernen und neu anmelden.', 9000); res(setTok(j)); } catch (e) { rej(e); } },
+      error_callback: e => rej(new Error(e?.type || 'Anmeldung abgebrochen')) });
+    cc.requestCode();
+  });
+}
+async function srvLogout() { try { await srvPost({ op: 'logout' }); } catch (e) {} SRV.has = false; clearTimeout(SRV.t); S.token = null; S.tokenExp = 0; }
 async function gToken(prompt = '') {
+  if (await srvCheck()) { if (!prompt) { const t = await srvRefresh(); if (t) return t; } return srvLogin(prompt); }
   const c = cfg(); await loadScript('https://accounts.google.com/gsi/client');
   return new Promise((res, rej) => {
     const tc = google.accounts.oauth2.initTokenClient({ client_id: c.clientId, scope: SCOPE,
@@ -683,11 +715,12 @@ async function gPick() {
 async function api(url, opt = {}) {                        // ein Abruf; in der Demo beantwortet die eingebaute Probe-Fassung
   if (S.mode === 'demo') return DEMO.fetch(url, opt);
   if (window.__lfTest?.fetch) return window.__lfTest.fetch(url, opt);   // nur für automatische Tests
+  if ((!S.token || Date.now() > S.tokenExp) && SRV.has && !isOffline()) await srvRefresh();   // Dauer-Anmeldung: still erneuern
   if (!S.token || Date.now() > S.tokenExp) { if (!isOffline()) $('relogin').hidden = false; throw Object.assign(new Error('login'), { login: true }); }
   const ac = new AbortController(), to = setTimeout(() => ac.abort(), opt.method && opt.method !== 'GET' ? 45000 : 20000);   // ohne Netz hängen Abrufe sonst minutenlang
   let r; try { r = await fetch(url, { signal: ac.signal, ...opt, headers: { Authorization: 'Bearer ' + S.token, 'Content-Type': 'application/json', ...(opt.headers || {}) } }); }
   catch (e) { throw Object.assign(new Error('keine Verbindung'), { net: true }); } finally { clearTimeout(to); }
-  if (r.status === 401) { S.token = null; $('relogin').hidden = false; throw Object.assign(new Error('login'), { login: true }); }
+  if (r.status === 401) { S.token = null; if (SRV.has && !opt._re && await srvRefresh()) return api(url, { ...opt, _re: 1 }); $('relogin').hidden = false; throw Object.assign(new Error('login'), { login: true }); }
   return r;
 }
 async function getJson(url, opt) { const r = await api(url, opt); const j = await r.json().catch(() => ({})); if (!r.ok) throw Object.assign(new Error(j?.error?.message || ('Fehler ' + r.status)), { status: r.status, body: j }); return j; }
@@ -1339,6 +1372,7 @@ function startPoll() { stopPoll(); S.timer = setInterval(() => { if (!document.h
 const keep = { busy: false, last: 0 };
 async function keepToken(force) {
   if (S.mode === 'demo' || !S.id || keep.busy || isOffline() || S.netDown) return;
+  if (SRV.has) { if (!S.token || Date.now() > S.tokenExp - 10 * 60e3) srvRefresh().then(t => { if (t) refresh(false); }); return; }
   const soon = !S.token || Date.now() > S.tokenExp - 15 * 60 * 1000;
   if (!soon && !force) return; if (Date.now() - keep.last < 20000) return;
   keep.busy = true; keep.last = Date.now();
@@ -2635,7 +2669,7 @@ async function exportViewPdf() {
   } catch (e) { toast('PDF: ' + (e.message || 'ging nicht'), 6000); }
 }
 /* ---------- Live selbst aktualisieren (allein; in Doppelpult macht das Doppelpult) ---------- */
-const APPV = 120;                                           // bei jeder neuen Version hochzählen
+const APPV = 121;                                           // bei jeder neuen Version hochzählen
 async function appFresh() { try { const r = await fetch(location.pathname + '?v=' + Date.now(), { cache: 'no-store' }); const m = /const APPV = (\d+);/.exec(await r.text()); return m ? +m[1] : 0; } catch (e) { return 0; } }
 async function appRenew() {
   if (!(await netOk())) { toast('Ohne Netz lässt sich Live nicht aktualisieren.', 4000); return; }
@@ -2729,6 +2763,9 @@ function showMenu() {
       u.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" style="width:18px;height:18px"><path d="M20 11a8 8 0 10-2.3 5.7M20 4v7h-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
       u.append(mk('span', '', nw ? 'Neue Version laden' : 'Live aktualisieren')); u.onclick = appRenew;
       r.append(u, mk('span', 'fine', 'Version ' + APPV)); b.append(r);
+      if (SRV.has) { const r2 = mk('div', 'acts left'), lo = mk('button', 'btn', 'Auf diesem Gerät abmelden'); lo.type = 'button';
+        lo.onclick = async () => { if (lo.dataset.ok !== '1') { lo.dataset.ok = '1'; lo.textContent = 'Wirklich abmelden?'; return; } await srvLogout(); $('tool-dlg').close(); toast('Abgemeldet. Beim nächsten Öffnen fragt Google wieder.', 4000); };
+        r2.append(lo, mk('span', 'fine', 'Dauerhaft angemeldet')); b.append(r2); }
     }
   };
   openPanel('Werkzeuge', build, null);
@@ -3138,10 +3175,10 @@ const DEMO = (() => {
   return { reset, fetch: fetchMock, step, _text: textAt };
 })();
 window.LFAPI = { S, getJson, DOCS, DRIVE, toast, mk, $, store, FOL, folShare, refresh, shown, neutral, colorOf, hex2rgb, rgb2hex };   // für den Regie-Modus (regie.js)
-window.LIVEFASSUNG = { regionImage, regieOpen, setView,  snapPdf, S, DEMO, refresh, parse, classify, markScenes, roleAliases, analyze, FOL, PG, pgFromPdf, pgDraw, viewPdf, gpdfImages, gpdfCrop, openDoc, openGoogle, OFF, P: () => P() };
+window.LIVEFASSUNG = { gToken, SRV, srvRefresh, regionImage, regieOpen, setView,  snapPdf, S, DEMO, refresh, parse, classify, markScenes, roleAliases, analyze, FOL, PG, pgFromPdf, pgDraw, viewPdf, gpdfImages, gpdfCrop, openDoc, openGoogle, OFF, P: () => P() };
 
 /* ---------- Start ---------- */
-setPaper(paper); setFs(fs); applyFont(store.get('font', '')); startScreen();
+setPaper(paper); setFs(fs); applyFont(store.get('font', '')); startScreen(); srvCheck().then(ok => { if (ok && SRV.has) srvRefresh(); });
 /* offene Fenster: Fassung dahinter steht still; neben das Fenster tippen schließt es (nicht beim Schreib-Fenster, da ginge Text verloren) */
 { const dlgs = [...document.querySelectorAll('dialog')], lock = () => document.documentElement.classList.toggle('dlg-open', dlgs.some(d => d.open));
   new MutationObserver(lock).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['open'] });

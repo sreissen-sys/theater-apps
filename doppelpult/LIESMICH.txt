@@ -1,4 +1,4 @@
-DOPPELPULT – Paket zum Hochladen (Stand 08d59ae4)
+DOPPELPULT – Paket zum Hochladen (Stand 4ef1ca67)
 ===============================================
 
 Was das ist
@@ -65,6 +65,9 @@ mit Beschriftung). So bleibt jede Notiz in ihrer Form und landet als Ganzes an i
 Hat sich der Text geändert, kommt die Notiz ungefähr an dieselbe Stelle, statt verloren zu gehen.
 Lasso in der Live-Fassung: Striche einkreisen, dann in der Auswahl ziehen = verschieben (Rückgängig geht).
 Die Live-Fassung schaltet den Song jetzt wie das PDF: sobald die Stelle ins untere Drittel kommt.
+
+Neu in Version 118
+- Live: Dauerhafte Google-Anmeldung. Einmal anmelden (Google fragt einmal nach Zustimmung), danach bleibt Live wochenlang angemeldet – ohne Anmeldefenster, auch in langen Proben, nach Standby oder Funkloch. Abmelden: Werkzeuge → App → „Auf diesem Gerät abmelden“ (in Live allein).
 
 Neu in Version 117
 - Live in Doppelpult: Beim schnellen Scrollen blitzen keine weißen Flächen mehr auf (Safari zeichnet beim schnellen Wischen kurz nach – der Grund hat jetzt die Farbe der Fassung).

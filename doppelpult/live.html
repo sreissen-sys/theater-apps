@@ -977,7 +977,7 @@ function renderDoc(keep) {
   S.paras.forEach((p, i) => { const e = paraEl(p, i); if (e) { sheet.append(e); n++; } });
   if (!n) sheet.append(mk('p', '', 'Alles ausgeblendet. Tippe oben auf ein Gewerk, um es wieder zu zeigen.'));
   main.append(sheet);
-  if (a) { const e = [...main.querySelectorAll('[data-k]')].find(x => x.dataset.k === a.k); if (e) window.scrollBy(0, e.getBoundingClientRect().top - a.y); }
+  if (a) { const e = [...main.querySelectorAll('[data-k]')].find(x => x.dataset.k === a.k); if (e) scrollByFree(e.getBoundingClientRect().top - a.y); }
   const sc = $('scenes'), heads = S.paras.filter(p => (p.head && /^HEADING_[12]/.test(p.named)) || p.scn);
   sc.textContent = ''; sc.append(new Option('Szene …', '')); heads.forEach(h => sc.append(new Option(h.text.replace(/\t+/g, ' ').slice(0, 60), h.key))); fitScenes();
   sc.hidden = !heads.length;
@@ -1688,7 +1688,11 @@ $('gw-mine').onclick = () => { P().hidden = [...S.cats.keys()].filter(id => id !
 $('paper').onclick = () => setPaper(PAPERS[(PAPERS.indexOf(paper) + 1) % PAPERS.length]);
 $('fs-dn').onclick = () => { const a = anchor(); setFs(fs - 1); keepAt(a); };
 $('fs-up').onclick = () => { const a = anchor(); setFs(fs + 1); keepAt(a); };
-function keepAt(a) { if (!a) return; const e = [...document.querySelectorAll('#main [data-k]')].find(x => x.dataset.k === a.k); if (e) window.scrollBy(0, e.getBoundingClientRect().top - a.y); }
+function scrollByFree(dy) {                                 // auch bei offenem Fenster verschieben (iPad ignoriert Scrollen, solange die Seite gesperrt ist)
+  if (!dy) return; const de = document.documentElement, lock = de.classList.contains('dlg-open');
+  if (lock) de.classList.remove('dlg-open'); window.scrollBy(0, dy); if (lock) de.classList.add('dlg-open');
+}
+function keepAt(a) { if (!a) return; const e = [...document.querySelectorAll('#main [data-k]')].find(x => x.dataset.k === a.k); if (e) scrollByFree(e.getBoundingClientRect().top - a.y); }
 $('scenes').onchange = () => { const k = $('scenes').value; $('scenes').value = ''; const e = [...document.querySelectorAll('#main [data-k]')].find(x => x.dataset.k === k); if (e) e.scrollIntoView({ block: 'start' }); };
 $('close').onclick = () => switchDialog();
 $('docname').onclick = () => switchDialog();
@@ -2360,7 +2364,7 @@ async function snapPdf(opt = {}) {                          // Export immer in v
   if (!pgShort()) return snapPdf0(opt);
   const a = anchor(); PG.full = true; pgDraw(); await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
   try { return await snapPdf0(opt); }
-  finally { PG.full = false; pgDraw(); if (a) { const e = [...document.querySelectorAll('#main [data-k]')].find(x => x.dataset.k === a.k); if (e) window.scrollBy(0, e.getBoundingClientRect().top - a.y); } }
+  finally { PG.full = false; pgDraw(); if (a) { const e = [...document.querySelectorAll('#main [data-k]')].find(x => x.dataset.k === a.k); if (e) scrollByFree(e.getBoundingClientRect().top - a.y); } }
 }
 async function snapPdf0(opt = {}) {
   const L = await pdfLib(), sh = $('main').querySelector('.sheet'); if (!sh) throw new Error('Keine Fassung offen.');
@@ -2670,7 +2674,7 @@ async function exportViewPdf() {
   } catch (e) { toast('PDF: ' + (e.message || 'ging nicht'), 6000); }
 }
 /* ---------- Live selbst aktualisieren (allein; in Doppelpult macht das Doppelpult) ---------- */
-const APPV = 122;                                           // bei jeder neuen Version hochzählen
+const APPV = 123;                                           // bei jeder neuen Version hochzählen
 async function appFresh() { try { const r = await fetch(location.pathname + '?v=' + Date.now(), { cache: 'no-store' }); const m = /const APPV = (\d+);/.exec(await r.text()); return m ? +m[1] : 0; } catch (e) { return 0; } }
 async function appRenew() {
   if (!(await netOk())) { toast('Ohne Netz lässt sich Live nicht aktualisieren.', 4000); return; }
@@ -3181,7 +3185,8 @@ window.LIVEFASSUNG = { gToken, SRV, srvRefresh, regionImage, regieOpen, setView,
 /* ---------- Start ---------- */
 setPaper(paper); setFs(fs); applyFont(store.get('font', '')); startScreen();
 /* Kopfleiste ändert ihre Höhe (Schrift geladen, Leiste bricht um, Hinweise): Text darunter bleibt stehen statt zu springen */
-{ let hh = 0; new ResizeObserver(() => { const h = $('hdr').offsetHeight; if (hh && h !== hh && scrollY > 0 && !$('hdr').hidden) window.scrollBy(0, h - hh); hh = h; }).observe($('hdr')); } srvCheck().then(ok => { if (ok && SRV.has) srvRefresh(); });
+{ let hh = 0; new ResizeObserver(() => { const h = $('hdr').offsetHeight; if (hh && h !== hh && scrollY > 0 && !$('hdr').hidden) scrollByFree(h - hh); hh = h; }).observe($('hdr')); } srvCheck().then(ok => { if (ok && SRV.has) srvRefresh(); });
+addEventListener('online', () => { if (SRV.ready) return; SRV.st = null; srvCheck().then(ok => { if (ok && SRV.has) srvRefresh().then(t => { if (t && S.id) refresh(false); }); }); });   // beim Start ohne Netz: Dauer-Anmeldung nachholen
 /* offene Fenster: Fassung dahinter steht still; neben das Fenster tippen schließt es (nicht beim Schreib-Fenster, da ginge Text verloren) */
 { const dlgs = [...document.querySelectorAll('dialog')], lock = () => document.documentElement.classList.toggle('dlg-open', dlgs.some(d => d.open));
   new MutationObserver(lock).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['open'] });

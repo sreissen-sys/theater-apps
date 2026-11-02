@@ -515,11 +515,12 @@ body:not(.embed) #close{display:none}
 
 /* In Doppelpult: gleiche Leiste, nur ohne Titel – Status und Leiste in einer Zeile, die Leiste bricht in sich um */
 body.embed header .row{flex-wrap:nowrap;align-items:flex-start;overflow:visible}
-body.embed .live{flex:none;margin-top:3px}
+body.embed .live{flex:none;margin-top:3px;width:76px;overflow:hidden}
+body.embed #live-t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}   /* Status immer gleich breit: wechselnde Texte (Uhrzeit, Offline, Stand …) verschieben die Leiste nicht */
 body.embed .grow{display:none}
 body.embed .tbar{flex:1 1 0!important;min-width:0;margin-left:4px}
 body.embed #close .ic{display:block;width:18px;height:18px}
-@media (min-width:641px) and (max-width:730px){body.embed #live-t{display:none}}
+@media (min-width:641px) and (max-width:730px){body.embed #live-t{display:none}body.embed .live{width:auto}}
 @media (min-width:641px) and (max-width:960px){body.embed #close .tx,body.embed #mini .tx{display:none}body.embed #close,body.embed #mini{padding:0 11px}body.embed .tbar .hsep{margin:4px 3px}body.embed .tbar{gap:6px}}
 </style>
 </head>
@@ -2669,7 +2670,7 @@ async function exportViewPdf() {
   } catch (e) { toast('PDF: ' + (e.message || 'ging nicht'), 6000); }
 }
 /* ---------- Live selbst aktualisieren (allein; in Doppelpult macht das Doppelpult) ---------- */
-const APPV = 121;                                           // bei jeder neuen Version hochzählen
+const APPV = 122;                                           // bei jeder neuen Version hochzählen
 async function appFresh() { try { const r = await fetch(location.pathname + '?v=' + Date.now(), { cache: 'no-store' }); const m = /const APPV = (\d+);/.exec(await r.text()); return m ? +m[1] : 0; } catch (e) { return 0; } }
 async function appRenew() {
   if (!(await netOk())) { toast('Ohne Netz lässt sich Live nicht aktualisieren.', 4000); return; }
@@ -3178,7 +3179,9 @@ window.LFAPI = { S, getJson, DOCS, DRIVE, toast, mk, $, store, FOL, folShare, re
 window.LIVEFASSUNG = { gToken, SRV, srvRefresh, regionImage, regieOpen, setView,  snapPdf, S, DEMO, refresh, parse, classify, markScenes, roleAliases, analyze, FOL, PG, pgFromPdf, pgDraw, viewPdf, gpdfImages, gpdfCrop, openDoc, openGoogle, OFF, P: () => P() };
 
 /* ---------- Start ---------- */
-setPaper(paper); setFs(fs); applyFont(store.get('font', '')); startScreen(); srvCheck().then(ok => { if (ok && SRV.has) srvRefresh(); });
+setPaper(paper); setFs(fs); applyFont(store.get('font', '')); startScreen();
+/* Kopfleiste ändert ihre Höhe (Schrift geladen, Leiste bricht um, Hinweise): Text darunter bleibt stehen statt zu springen */
+{ let hh = 0; new ResizeObserver(() => { const h = $('hdr').offsetHeight; if (hh && h !== hh && scrollY > 0 && !$('hdr').hidden) window.scrollBy(0, h - hh); hh = h; }).observe($('hdr')); } srvCheck().then(ok => { if (ok && SRV.has) srvRefresh(); });
 /* offene Fenster: Fassung dahinter steht still; neben das Fenster tippen schließt es (nicht beim Schreib-Fenster, da ginge Text verloren) */
 { const dlgs = [...document.querySelectorAll('dialog')], lock = () => document.documentElement.classList.toggle('dlg-open', dlgs.some(d => d.open));
   new MutationObserver(lock).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['open'] });

@@ -1,4 +1,4 @@
-DOPPELPULT – Paket zum Hochladen (Stand dfbc8553)
+DOPPELPULT – Paket zum Hochladen (Stand 1e76a649)
 ===============================================
 
 Was das ist
@@ -65,6 +65,10 @@ mit Beschriftung). So bleibt jede Notiz in ihrer Form und landet als Ganzes an i
 Hat sich der Text geändert, kommt die Notiz ungefähr an dieselbe Stelle, statt verloren zu gehen.
 Lasso in der Live-Fassung: Striche einkreisen, dann in der Auswahl ziehen = verschieben (Rückgängig geht).
 Die Live-Fassung schaltet den Song jetzt wie das PDF: sobald die Stelle ins untere Drittel kommt.
+
+Neu in Version 122
+- Hilfe: Neuer Knopf „?“ oben rechts – Installieren (iPad/Mac), kurz erklärt, Einführung.
+- Einführung: ein kurzer Rundgang (2 Minuten), der jede Funktion direkt auf dem Bildschirm zeigt. Wird beim ersten Start einmal angeboten; jederzeit wieder über „?“ oder Sicherung → „Einführung ansehen“.
 
 Neu in Version 121
 - Schreiben in der Live-Fassung (A4-Seiten): Die Seiten werden erst nach einer kurzen Schreibpause neu umbrochen, nicht nach jedem Strich. Der Stift hängt nicht mehr hinterher, und die Seite rückt nicht mehr mitten im Schreiben.

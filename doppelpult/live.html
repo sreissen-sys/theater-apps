@@ -220,6 +220,27 @@ body.pgview .sheet .pbx::before{display:block!important;content:'';position:abso
 body.pgview .sheet .pbb.pgstart{margin-top:calc(var(--pggap) + 1.5em + var(--pgpad,0px) + var(--pgtop,0px))!important}
 body.pgview .sheet{margin-bottom:28px}
 body.pgview .sheet[data-pglast]::after{content:attr(data-pglast);position:absolute;bottom:-22px;left:0;right:0;text-align:center;font:700 12px/1 var(--f-ui);color:var(--mute);letter-spacing:.04em}
+/* Doppelseite (quer): Seiten als Spalten nebeneinander */
+html.spread{overflow:hidden}
+html.spread main{padding:0!important}
+html.spread header{position:fixed;left:0;top:0;bottom:0;width:176px;overflow-y:auto;overflow-x:hidden;transform:none!important;padding:10px 10px 16px!important;box-shadow:2px 0 0 var(--tape);z-index:20}
+html.spread header .row{flex-direction:column!important;align-items:stretch!important;flex-wrap:nowrap!important;gap:8px!important;overflow:visible!important}
+html.spread header .row > .grow,html.spread header .hsep{display:none!important}
+html.spread header .docname{white-space:normal;font-size:17px;line-height:1.2}
+html.spread header .tbar{display:flex!important;flex-direction:column!important;align-items:stretch!important;flex:none!important;margin:0!important;gap:6px!important}
+html.spread header .grp{display:flex!important;flex-direction:column;align-items:stretch;gap:6px}
+html.spread header .grp > *,html.spread header .tbar .btn{width:100%;justify-content:flex-start}
+html.spread header .seg{display:flex;width:100%}html.spread header .seg button{flex:1}
+html.spread header .chips{flex-direction:column;flex-wrap:nowrap;margin-top:10px;overflow:visible}
+html.spread #minimap,html.spread #mm-x{display:none!important}
+html.spread .sheet{width:var(--wp)!important;max-width:none!important;margin:8px 0 0!important;padding:24px 30px 12px!important;border-radius:0;transform:translateX(var(--spx,12px))}
+html.spcol .sheet{width:var(--spw)!important;height:var(--sph);column-count:var(--spn);column-gap:var(--spg);column-fill:auto;box-shadow:none;background:repeating-linear-gradient(to right,var(--paper) 0 var(--wp),transparent var(--wp) var(--sps))!important}
+html.spcol body.pgview .sheet .pgstart{break-before:column;-webkit-column-break-before:always;margin-top:var(--pgtop,0px)!important}
+html.spcol body.pgview .sheet .pgstart::before{display:none!important}
+html.spcol main{clip-path:inset(-20px var(--spr,0px) -20px var(--spl,0px))}
+.sp-num{white-space:nowrap;position:fixed;z-index:19;transform:translateX(-100%);font:700 11px/1 var(--f-ui);color:var(--mute);letter-spacing:.04em;pointer-events:none}
+html.spcol body.pgview .sheet[data-pglast]::after{display:none}
+#sp-badge{position:fixed;right:12px;bottom:10px;z-index:19;padding:3px 9px;border-radius:999px;background:color-mix(in srgb,var(--panel) 88%,transparent);color:var(--mute);font:700 12px/1.4 var(--f-ui);letter-spacing:.03em;pointer-events:none;box-shadow:0 1px 4px rgba(0,0,0,.18)}
 #mini[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:#1A1206}
 .minis{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:10px}
 .mini{border:1px solid var(--line);border-radius:10px;padding:7px 8px;cursor:pointer;height:178px;overflow:hidden;background:var(--paper);color:var(--ink);text-align:left;font:inherit;position:relative}
@@ -966,6 +987,7 @@ function paraEl(p, idx) {
   return trimNl(el);
 }
 function anchor() {                                        // welcher Absatz steht gerade auf der Lesehöhe (ein Drittel unter dem Kopf)? Der bleibt bei Umbauten stehen
+  if (SP.on) return null;                                  // Doppelseite: die Seite merkt sich SP.ak
   const top = Math.max(0, $('hdr').getBoundingClientRect().bottom) + 4, line = top + Math.max(0, innerHeight - top) * .3;
   let first = null;
   for (const e of document.querySelectorAll('#main [data-k]')) { const r = e.getBoundingClientRect(); if (!r.height) continue; if (!first && r.bottom > top) first = { k: e.dataset.k, y: r.top }; if (r.bottom > line) return { k: e.dataset.k, y: r.top }; }
@@ -1689,7 +1711,7 @@ $('paper').onclick = () => setPaper(PAPERS[(PAPERS.indexOf(paper) + 1) % PAPERS.
 $('fs-dn').onclick = () => { const a = anchor(); setFs(fs - 1); keepAt(a); };
 $('fs-up').onclick = () => { const a = anchor(); setFs(fs + 1); keepAt(a); };
 function scrollByFree(dy) {                                 // auch bei offenem Fenster verschieben (iPad ignoriert Scrollen, solange die Seite gesperrt ist)
-  if (!dy) return; const de = document.documentElement, lock = de.classList.contains('dlg-open');
+  if (!dy || SP.on) return; const de = document.documentElement, lock = de.classList.contains('dlg-open');
   if (lock) de.classList.remove('dlg-open'); window.scrollBy(0, dy); if (lock) de.classList.add('dlg-open');
 }
 function keepAt(a) { if (!a) return; const e = [...document.querySelectorAll('#main [data-k]')].find(x => x.dataset.k === a.k); if (e) scrollByFree(e.getBoundingClientRect().top - a.y); }
@@ -2586,13 +2608,15 @@ function pgBreakTap(e) {                                    // Tipp auf einen Se
   else toast('Hier ist die Seite voll – Live trennt selbst.', 3000);
 }
 function pgDraw() {
-  const a = anchor(); layoutGaps(); pgDraw0(); keepAt(a); PG.anc = anchor(); const sh = $('main').querySelector('.sheet'); PG.w = Math.round(sh?.getBoundingClientRect().width || 0);
+  const was = SP.on, a = was ? null : anchor(), ak = was ? SP.ak : null; layoutGaps(); pgDraw0();
+  if (SP.on) spShowKey(ak || a?.k, true); else if (was && ak) spLeave(ak); else keepAt(a); PG.anc = anchor(); const sh = $('main').querySelector('.sheet'); PG.w = Math.round(sh?.getBoundingClientRect().width || 0);
   const h = Math.round(sh?.offsetHeight || 0), dh = h - (PG.h || 0); PG.h = h;   // Seiten an/aus oder umgebrochen: Länge der Fassung hat sich geändert
   if (dh && mmOn()) { clearTimeout(MM.t); MM.t = setTimeout(mmBuild, 250); }   // Miniatur mitnehmen (sonst zeigt und scrollt sie nur den alten Stand)
 }   // Lesestelle bleibt stehen, auch wenn sich Seiten darüber ändern
-function pgDraw0() {
+function pgDraw0() { spPre(); try { pgDraw1(); } finally { spPost(); } }
+function pgDraw1() {
   const sh = $('main').querySelector('.sheet'); if (!sh) return;
-  const on = !!P()?.pg; document.body.classList.toggle('pgview', on);
+  const on = pgOn(); document.body.classList.toggle('pgview', on);
   const kids = [...sh.children].filter(e => e.matches('[data-k],table'));
   const clear = e => { e.classList.remove('pgstart', 'pgsub', 'pbx'); delete e.dataset.pg; delete e.dataset.pgn; delete e.dataset.ng; e.style.removeProperty('--pgpad'); e.style.removeProperty('--pgtop'); delete e.dataset.need; };
   if (!on || !kids.length) { kids.forEach(clear); delete sh.dataset.pg1; delete sh.dataset.pglast; return; }
@@ -2665,6 +2689,76 @@ function pgDraw0() {
   }
 }
 function pgLater(ms) { clearTimeout(PG.rt); PG.rt = setTimeout(() => { const q = Date.now() - (window.__dpPenT || 0); if (q < 1800) return pgLater(1900 - q); pgDraw(); }, ms); }   // während in Doppelpult geschrieben wird: erst nach einer kurzen Schreibpause neu umbrechen (sonst hakt der Stift und die Seite rückt mitten im Schreiben)
+/* ---------- Doppelseite: im Querformat zwei A4-Seiten nebeneinander, blättern statt scrollen ----------
+   Live bricht wie immer nach A4 um (gemessen in einer Spalte), danach stehen die Seiten als Spalten nebeneinander.
+   Jede Seite beginnt eine neue Spalte – Absätze und Notizen werden so nie geteilt. */
+const SP = { hw: 176, on: false, dp: false, step: 2, c0: 0, n: 1, wp: 0, gap: 28, pl: 30, pr: 30, pt: 24, pb: 12, ak: null };
+const spWant = () => !PG.full && (EMBED ? SP.dp : P()?.pg === 2) && innerWidth > innerHeight * 1.12 && innerWidth >= 700;
+const pgOn = () => !!P()?.pg || spWant();
+function spPre() {                                         // vor dem Umbrechen: Breite einer Seite festlegen, Spalten aus (gemessen wird untereinander)
+  const de = document.documentElement, want = pgOn() && spWant() && !!$('main').querySelector('.sheet');
+  de.classList.remove('spcol');
+  if (!want) { if (SP.on) { de.classList.remove('spread'); ['--wp', '--spx', '--spw', '--sph', '--spn', '--spg', '--sps'].forEach(v => de.style.removeProperty(v)); } SP.on = false; return; }
+  const h = $('hdr'); h.classList.remove('hide');               // Kopfzeile steht als Spalte links neben den Seiten
+  const avH = innerHeight - 14, avW = innerWidth - SP.hw - 24;
+  SP.wp = Math.floor(Math.max(260, Math.min(820, (avH - SP.pt - SP.pb + 22) / 1.4142, (avW - SP.gap) / 2)));
+  de.classList.add('spread'); de.style.setProperty('--wp', SP.wp + 'px'); SP.on = true;
+  if (scrollY) window.scrollTo(0, 0);
+}
+function spPost() {                                        // nach dem Umbrechen: Seiten als Spalten nebeneinander
+  if (!SP.on) return; const de = document.documentElement, sh = $('main').querySelector('.sheet'); if (!sh) return;
+  SP.n = sh.querySelectorAll(':scope > .pgstart').length + 1;
+  const hc = Math.round(SP.wp * 1.4142 - 22), st = SP.wp + SP.gap;
+  de.style.setProperty('--sph', (hc + SP.pt + SP.pb) + 'px'); de.style.setProperty('--spn', SP.n);
+  de.style.setProperty('--spw', (SP.n * SP.wp + (SP.n - 1) * SP.gap) + 'px'); de.style.setProperty('--spg', (SP.pl + SP.pr + SP.gap) + 'px'); de.style.setProperty('--sps', st + 'px');
+  de.classList.add('spcol'); spGo(SP.c0, true);
+}
+function spGeo() { const sh = $('main').querySelector('.sheet'), r = sh?.getBoundingClientRect(); return r ? { x: r.left + SP.pl, st: SP.wp + SP.gap } : null; }
+function spCol(el, G) { G = G || spGeo(); if (!G || !el) return 0; const r = el.getBoundingClientRect(); return Math.max(0, Math.round((r.left + 6 - G.x) / G.st)); }   // auf welcher Seite (Spalte) steht der Absatz?
+function spGo(c, quiet) {
+  if (!SP.on) return; c = Math.max(0, Math.min(SP.n - 1, Math.round(c) || 0)); if (SP.step === 2) c -= c % 2;
+  const L = SP.L = SP.hw + Math.max(12, (innerWidth - SP.hw - (2 * SP.wp + SP.gap)) / 2), de = document.documentElement, w2 = c + 1 < SP.n ? 2 * SP.wp + SP.gap : SP.wp;
+  de.style.setProperty('--spx', (L - c * (SP.wp + SP.gap)) + 'px'); de.style.setProperty('--spl', Math.max(0, L - 2) + 'px'); de.style.setProperty('--spr', Math.max(0, innerWidth - L - w2 - 2) + 'px');   // nur die zwei Seiten sichtbar
+  const moved = c !== SP.c0; SP.c0 = c;
+  const G = spGeo(), first = [...document.querySelectorAll('#main [data-k]')].find(e => e.getBoundingClientRect().height && spCol(e, G) >= c); SP.ak = first?.dataset.k || SP.ak;
+  spBadge();
+  if (moved || !quiet) { window.dispatchEvent(new Event('scroll')); }   // wie Scrollen: Song folgen, Doppelpult zeichnet nach
+}
+function spStep(dir) { if (!SP.on) return false; const t = SP.c0 + dir * SP.step; if (t < 0 || t > SP.n - 1) return false; spGo(t); return true; }
+function spShowEl(el, quiet) { if (!SP.on || !el) return; const c = spCol(el); spGo(c, quiet); }
+function spShowKey(k, quiet) { const e = k && [...document.querySelectorAll('#main [data-k]')].find(x => x.dataset.k === k); if (e) spShowEl(e, quiet); else spGo(SP.c0, quiet); }
+function spLeave(k) {                                      // zurück zu untereinander: dieselbe Seite oben zeigen
+  const e = [...document.querySelectorAll('#main [data-k]')].find(x => x.dataset.k === k); if (!e) return;
+  const top = Math.max(0, $('hdr').getBoundingClientRect().bottom) + 40; window.scrollBy(0, e.getBoundingClientRect().top - top);
+}
+function spBadge() {                                       // „Seite 3–4 / 12“
+  let b = $('sp-badge'); if (!SP.on) { b?.remove(); $('sp-num0')?.remove(); $('sp-num1')?.remove(); return; }
+  b?.remove(); const a = SP.c0 + 1;                        // Seitenzahl unten rechts auf jedem Blatt (n / gesamt)
+  const sh = $('main').querySelector('.sheet'), r = sh?.getBoundingClientRect(); if (!r) return;   // Seitenzahl unten rechts auf jedem Blatt
+  [a, a + 1].forEach((n, i) => { let e = $('sp-num' + i); if (!e) { e = mk('div', 'sp-num'); e.id = 'sp-num' + i; document.body.append(e); }
+    e.hidden = n > SP.n; e.textContent = 'Seite ' + n + ' / ' + SP.n; e.style.left = (SP.L + i * (SP.wp + SP.gap) + SP.wp - 12) + 'px'; e.style.top = (r.bottom - 20) + 'px'; });
+}
+function setSpread(o) {                                    // Doppelpult: Doppelseite an/aus, um 1 oder 2 Seiten blättern
+  const on = !!o?.on, k = o?.step === 1 ? 1 : 2; if (on === SP.dp && k === SP.step) return;
+  SP.dp = on; SP.step = k; pgDraw();
+}
+addEventListener('resize', () => { clearTimeout(SP.rt); SP.rt = setTimeout(() => { if (SP.on !== spWant() || SP.on) pgDraw(); }, 160); });
+(() => {                                                   // Wischen nach links/rechts blättert (nicht, während Doppelpult schreibt)
+  let t0 = null;
+  addEventListener('touchstart', e => { t0 = SP.on && e.touches.length === 1 && e.touches[0].touchType !== 'stylus' ? { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() } : null; }, { passive: true });
+  addEventListener('touchend', e => {
+    const a = t0; t0 = null; if (!a || !SP.on || document.querySelector('dialog[open]')) return;
+    const c = e.changedTouches[0], dx = c.clientX - a.x, dy = c.clientY - a.y;
+    if (Date.now() - a.t > 800 || Math.abs(dx) < 60 || Math.abs(dx) < 2 * Math.abs(dy)) return;
+    if (window.__dpNoSwipe?.() || Date.now() - (window.__dpPenT || 0) < 600) return;
+    spStep(dx < 0 ? 1 : -1);
+  }, { passive: true });
+  addEventListener('keydown', e => {                        // allein: Pfeile und Fußpedal (in Doppelpult blättert Doppelpult)
+    if (!SP.on || EMBED || S.caret || document.querySelector('dialog[open]') || /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || '')) return;
+    const d = ['ArrowRight', 'ArrowDown', 'PageDown'].includes(e.key) ? 1 : ['ArrowLeft', 'ArrowUp', 'PageUp'].includes(e.key) ? -1 : 0;
+    if (d) { e.preventDefault(); spStep(d); }
+  });
+})();
 async function exportViewPdf() {
   $('tool-dlg').close(); toast('PDF wird gesetzt …', 20000);
   try {
@@ -2674,7 +2768,7 @@ async function exportViewPdf() {
   } catch (e) { toast('PDF: ' + (e.message || 'ging nicht'), 6000); }
 }
 /* ---------- Live selbst aktualisieren (allein; in Doppelpult macht das Doppelpult) ---------- */
-const APPV = 124;                                           // bei jeder neuen Version hochzählen
+const APPV = 125;                                           // bei jeder neuen Version hochzählen
 async function appFresh() { try { const r = await fetch(location.pathname + '?v=' + Date.now(), { cache: 'no-store' }); const m = /const APPV = (\d+);/.exec(await r.text()); return m ? +m[1] : 0; } catch (e) { return 0; } }
 async function appRenew() {
   if (!(await netOk())) { toast('Ohne Netz lässt sich Live nicht aktualisieren.', 4000); return; }
@@ -2753,12 +2847,13 @@ function showMenu() {
       opts.forEach(([t, v]) => { const x = mk('button', 'btn' + (cur === v ? ' pri' : ''), t); x.type = 'button'; x.onclick = () => { set(v); savePrefs(); pgDraw(); showMenu(); }; o.append(x); });
       if (extra) o.append(extra); b.append(r);
     };
-    row('Seiten', [['Aus', false], ['A4-Seiten', true]], !!P().pg, v => { P().pg = v; });
+    row('Seiten', EMBED ? [['Aus', false], ['A4-Seiten', true]] : [['Aus', false], ['A4-Seiten', true], ['Doppelseite (quer)', 2]], P().pg === 2 ? 2 : !!P().pg, v => { P().pg = v; });
     if (P().pg) {
       const no = Object.keys(P().pbOv || {}).length; let rs = null;
       if (no) { rs = mk('button', 'btn', 'Eigene Festlegungen zurücksetzen (' + no + ')'); rs.type = 'button'; rs.onclick = () => { P().pbOv = {}; savePrefs(); pgDraw(); showMenu(); }; }
       row('Umbrüche aus dem Doc', [['vor Abschnitten', 'sec'], ['alle', 'all'], ['keine', 'none']], P().pbMode || 'sec', v => { P().pbMode = v; }, rs);
       row('Leere Seitenenden', [['wie gedruckt', false], ['kürzen', true]], !!P().pgShort, v => { P().pgShort = v; });
+      if (P().pg === 2) b.append(mk('p', 'fine', 'Doppelseite: im Querformat zwei A4-Seiten nebeneinander. Blättern mit Wischen, Pfeiltasten oder Fußpedal. Hochkant wie gewohnt untereinander.'));
       b.append(mk('p', 'fine', 'A4-Seiten genau wie im PDF-Export: neue Seite, wenn die Seite voll ist oder an einem Umbruch aus dem Doc. Ein Absatz kommt mit seinen Notizen und Marken immer ganz auf eine Seite; die Seitenzahlen sind die von Live.'));
       b.append(mk('p', 'fine', '„Vor Abschnitten“: ein Umbruch aus dem Doc gilt nur vor einer Überschrift, einem Akt, einer Szene, einem Zwischenspiel, Finale o. Ä.; die übrigen zeigt Live als gestrichelte Linie. Antippen von Seitenstreifen oder Linie legt es für diese Stelle fest. „Kürzen“ spart nur in der Anzeige Leerraum – Seiten und PDF bleiben gleich.'));
     } else b.append(mk('p', 'fine', 'Teilt die Fassung in A4-Seiten wie im PDF-Export – z. B. für „wir machen ab Seite 34“.'));
@@ -3024,7 +3119,8 @@ function followSong(force) {
   if (!force && Date.now() < (followSong.hold || 0)) return;   // gerade angetippt: nicht vom Scrollen überstimmen
   const y = innerHeight * .72, keys = S.flat.map(p => p.key);      // wie im PDF von Doppelpult: schaltet, sobald die Stelle ins untere Drittel kommt
   const els = document.querySelectorAll('#main [data-k]'); let lo = 0, hi = els.length - 1, el = null;   // Absätze stehen der Reihe nach: halbieren statt alle zu messen
-  while (lo <= hi) { const m = (lo + hi) >> 1; if (els[m].getBoundingClientRect().bottom > y) { el = els[m]; hi = m - 1; } else lo = m + 1; }
+  if (SP.on) { const G = spGeo(); while (lo <= hi) { const m = (lo + hi) >> 1; if (spCol(els[m], G) <= SP.c0) { el = els[m]; lo = m + 1; } else hi = m - 1; } }   // Doppelseite: die linke Seite gilt als erreicht
+  else while (lo <= hi) { const m = (lo + hi) >> 1; if (els[m].getBoundingClientRect().bottom > y) { el = els[m]; hi = m - 1; } else lo = m + 1; }
   let i = el ? keys.indexOf(el.dataset.k) : keys.length - 1; if (i < 0) i = 0;
   let id = null; for (let j = i; j >= 0 && !id; j--) id = songIn(S.flat[j]);
   if (id && (id !== songNow || force)) { songNow = id; parent.postMessage({ dp: 'song', id }, location.origin); }
@@ -3180,7 +3276,7 @@ const DEMO = (() => {
   return { reset, fetch: fetchMock, step, _text: textAt };
 })();
 window.LFAPI = { S, getJson, DOCS, DRIVE, toast, mk, $, store, FOL, folShare, refresh, shown, neutral, colorOf, hex2rgb, rgb2hex };   // für den Regie-Modus (regie.js)
-window.LIVEFASSUNG = { gToken, SRV, srvRefresh, regionImage, regieOpen, setView,  snapPdf, S, DEMO, refresh, parse, classify, markScenes, roleAliases, analyze, FOL, PG, pgFromPdf, pgDraw, viewPdf, gpdfImages, gpdfCrop, openDoc, openGoogle, OFF, P: () => P() };
+window.LIVEFASSUNG = { SP, setSpread, spStep, spGo, spShowEl, spCol, spGeo, gToken, SRV, srvRefresh, regionImage, regieOpen, setView,  snapPdf, S, DEMO, refresh, parse, classify, markScenes, roleAliases, analyze, FOL, PG, pgFromPdf, pgDraw, viewPdf, gpdfImages, gpdfCrop, openDoc, openGoogle, OFF, P: () => P() };
 
 /* ---------- Start ---------- */
 setPaper(paper); setFs(fs); applyFont(store.get('font', '')); startScreen();

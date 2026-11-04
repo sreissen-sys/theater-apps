@@ -116,6 +116,7 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
 .seg button[aria-pressed=true]{background:var(--accent);color:#1A1206}
 .banner{background:#FFF3D6;color:#4A3300;border-bottom:1px solid #E8C877;padding:8px 14px;display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap}
 #tools{position:relative}
+#tools.upd{position:relative}#tools.upd::before{content:'Neu';position:absolute;top:-7px;left:-7px;z-index:2;padding:1px 6px;border-radius:9px;background:#D21F26;color:#fff;font:700 11px/1.4 var(--f-ui);pointer-events:none}
 #tools-n{position:absolute;top:-6px;right:-6px;min-width:20px;height:20px;border-radius:10px;background:#D21F26;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px}
 #view-chip{background:var(--accent);border-color:var(--accent);color:#1A1206;font-weight:600}
 #tool-dlg{width:min(980px,calc(100vw - 16px));max-height:calc(100vh - 24px);height:calc(100vh - 24px)}
@@ -223,15 +224,13 @@ body.pgview .sheet[data-pglast]::after{content:attr(data-pglast);position:absolu
 /* Doppelseite (quer): Seiten als Spalten nebeneinander */
 html.spread{overflow:hidden}
 html.spread main{padding:0!important}
-html.spread header{position:fixed;left:0;top:0;bottom:0;width:176px;overflow-y:auto;overflow-x:hidden;transform:none!important;padding:10px 10px 16px!important;box-shadow:2px 0 0 var(--tape);z-index:20}
-html.spread header .row{flex-direction:column!important;align-items:stretch!important;flex-wrap:nowrap!important;gap:8px!important;overflow:visible!important}
-html.spread header .row > .grow,html.spread header .hsep{display:none!important}
-html.spread header .docname{white-space:normal;font-size:17px;line-height:1.2}
-html.spread header .tbar{display:flex!important;flex-direction:column!important;align-items:stretch!important;flex:none!important;margin:0!important;gap:6px!important}
-html.spread header .grp{display:flex!important;flex-direction:column;align-items:stretch;gap:6px}
-html.spread header .grp > *,html.spread header .tbar .btn{width:100%;justify-content:flex-start}
-html.spread header .seg{display:flex;width:100%}html.spread header .seg button{flex:1}
-html.spread header .chips{flex-direction:column;flex-wrap:nowrap;margin-top:10px;overflow:visible}
+html.spread header{position:fixed;left:0;top:0;width:var(--hdw,50vw);box-shadow:2px 2px 0 var(--tape);border-bottom-right-radius:8px;z-index:20}
+html.spread header .row{flex-wrap:wrap!important;row-gap:6px}
+#sp-hide{display:none}html.spread #sp-hide{display:inline-flex}
+#sp-show{position:fixed;left:10px;top:6px;z-index:21;display:none;padding:4px 12px;border-radius:0 0 8px 8px;border:0;background:var(--head,#2B2F36);color:var(--head-ink,#fff);font:700 13px/1.4 var(--f-ui);box-shadow:0 2px 0 var(--tape);cursor:pointer}
+html.spread.sphide #sp-show{display:block}
+html.spread.sphide header{transform:translateY(-110%)!important}
+body.dp-stage #sp-show{display:none!important}
 html.spread #minimap,html.spread #mm-x{display:none!important}
 html.spread .sheet{width:var(--wp)!important;max-width:none!important;margin:8px 0 0!important;padding:24px 30px 12px!important;border-radius:0;transform:translateX(var(--spx,12px))}
 html.spcol .sheet{width:var(--spw)!important;height:var(--sph);column-count:var(--spn);column-gap:var(--spg);column-fill:auto;box-shadow:none;background:repeating-linear-gradient(to right,var(--paper) 0 var(--wp),transparent var(--wp) var(--sps))!important}
@@ -1542,6 +1541,7 @@ document.addEventListener('keydown', e => {                // Tastatur am Rechne
 });
 let lastY = window.scrollY, upRun = 0;                     // Kopfzeile ausblenden beim Lesen; zurück erst nach deutlichem Hochscrollen (ca. 140 px am Stück)
 window.addEventListener('scroll', () => {
+  if (SP.on) return;                                       // Doppelseite: Leiste nur über den Knopf
   const y = window.scrollY, dy = y - lastY, h = $('hdr');
   upRun = dy < 0 ? upRun - dy : dy > 2 ? 0 : upRun;
   if (y < 60 || upRun > 140) h.classList.remove('hide'); else if (dy > 4 && !document.querySelector('dialog[open]')) h.classList.add('hide');
@@ -2692,14 +2692,15 @@ function pgLater(ms) { clearTimeout(PG.rt); PG.rt = setTimeout(() => { const q =
 /* ---------- Doppelseite: im Querformat zwei A4-Seiten nebeneinander, blättern statt scrollen ----------
    Live bricht wie immer nach A4 um (gemessen in einer Spalte), danach stehen die Seiten als Spalten nebeneinander.
    Jede Seite beginnt eine neue Spalte – Absätze und Notizen werden so nie geteilt. */
-const SP = { hw: 176, on: false, dp: false, step: 2, c0: 0, n: 1, wp: 0, gap: 28, pl: 30, pr: 30, pt: 24, pb: 12, ak: null };
+const SP = { hw: 0, hide: (() => { try { return localStorage.getItem('lf-sphide') === '1'; } catch (e) { return false; } })(), on: false, dp: false, step: 2, c0: 0, n: 1, wp: 0, gap: 28, pl: 30, pr: 30, pt: 24, pb: 12, ak: null };
 const spWant = () => !PG.full && (EMBED ? SP.dp : P()?.pg === 2) && innerWidth > innerHeight * 1.12 && innerWidth >= 700;
 const pgOn = () => !!P()?.pg || spWant();
 function spPre() {                                         // vor dem Umbrechen: Breite einer Seite festlegen, Spalten aus (gemessen wird untereinander)
   const de = document.documentElement, want = pgOn() && spWant() && !!$('main').querySelector('.sheet');
   de.classList.remove('spcol');
   if (!want) { if (SP.on) { de.classList.remove('spread'); ['--wp', '--spx', '--spw', '--sph', '--spn', '--spg', '--sps'].forEach(v => de.style.removeProperty(v)); } SP.on = false; return; }
-  const h = $('hdr'); h.classList.remove('hide');               // Kopfzeile steht als Spalte links neben den Seiten
+  const h = $('hdr'); h.classList.remove('hide');               // Kopfzeile nur über der linken Seite, ausblendbar
+  spHdrBtns(); document.documentElement.classList.toggle('sphide', SP.hide);
   const avH = innerHeight - 14, avW = innerWidth - SP.hw - 24;
   SP.wp = Math.floor(Math.max(260, Math.min(820, (avH - SP.pt - SP.pb + 22) / 1.4142, (avW - SP.gap) / 2)));
   de.classList.add('spread'); de.style.setProperty('--wp', SP.wp + 'px'); SP.on = true;
@@ -2713,12 +2714,20 @@ function spPost() {                                        // nach dem Umbrechen
   de.style.setProperty('--spw', (SP.n * SP.wp + (SP.n - 1) * SP.gap) + 'px'); de.style.setProperty('--spg', (SP.pl + SP.pr + SP.gap) + 'px'); de.style.setProperty('--sps', st + 'px');
   de.classList.add('spcol'); spGo(SP.c0, true);
 }
+function spHdrBtns() {                                     // Kopfzeile aus-/einblenden (es wird ja nicht gescrollt)
+  if ($('sp-hide')) return;
+  const b = mk('button', 'btn', '▲'); b.id = 'sp-hide'; b.type = 'button'; b.title = 'Leiste ausblenden'; b.setAttribute('aria-label', 'Leiste ausblenden');
+  $('hdr').querySelector('.row').append(b);
+  const s = mk('button', '', '▼ Leiste'); s.id = 'sp-show'; s.type = 'button'; s.setAttribute('aria-label', 'Leiste einblenden'); document.body.append(s);
+  const set = v => { SP.hide = v; document.documentElement.classList.toggle('sphide', v); try { localStorage.setItem('lf-sphide', v ? '1' : '0'); } catch (e) {} };
+  b.onclick = () => set(true); s.onclick = () => set(false);
+}
 function spGeo() { const sh = $('main').querySelector('.sheet'), r = sh?.getBoundingClientRect(); return r ? { x: r.left + SP.pl, st: SP.wp + SP.gap } : null; }
 function spCol(el, G) { G = G || spGeo(); if (!G || !el) return 0; const r = el.getBoundingClientRect(); return Math.max(0, Math.round((r.left + 6 - G.x) / G.st)); }   // auf welcher Seite (Spalte) steht der Absatz?
 function spGo(c, quiet) {
   if (!SP.on) return; c = Math.max(0, Math.min(SP.n - 1, Math.round(c) || 0)); if (SP.step === 2) c -= c % 2;
   const L = SP.L = SP.hw + Math.max(12, (innerWidth - SP.hw - (2 * SP.wp + SP.gap)) / 2), de = document.documentElement, w2 = c + 1 < SP.n ? 2 * SP.wp + SP.gap : SP.wp;
-  de.style.setProperty('--spx', (L - c * (SP.wp + SP.gap)) + 'px'); de.style.setProperty('--spl', Math.max(0, L - 2) + 'px'); de.style.setProperty('--spr', Math.max(0, innerWidth - L - w2 - 2) + 'px');   // nur die zwei Seiten sichtbar
+  de.style.setProperty('--spx', (L - c * (SP.wp + SP.gap)) + 'px'); de.style.setProperty('--spl', Math.max(0, L - 2) + 'px'); de.style.setProperty('--spr', Math.max(0, innerWidth - L - w2 - 2) + 'px'); de.style.setProperty('--hdw', Math.max(360, Math.round(L + SP.wp)) + 'px');   // nur die zwei Seiten sichtbar
   const moved = c !== SP.c0; SP.c0 = c;
   const G = spGeo(), first = [...document.querySelectorAll('#main [data-k]')].find(e => e.getBoundingClientRect().height && spCol(e, G) >= c); SP.ak = first?.dataset.k || SP.ak;
   spBadge();
@@ -2768,7 +2777,7 @@ async function exportViewPdf() {
   } catch (e) { toast('PDF: ' + (e.message || 'ging nicht'), 6000); }
 }
 /* ---------- Live selbst aktualisieren (allein; in Doppelpult macht das Doppelpult) ---------- */
-const APPV = 125;                                           // bei jeder neuen Version hochzählen
+const APPV = 126;                                           // bei jeder neuen Version hochzählen
 async function appFresh() { try { const r = await fetch(location.pathname + '?v=' + Date.now(), { cache: 'no-store' }); const m = /const APPV = (\d+);/.exec(await r.text()); return m ? +m[1] : 0; } catch (e) { return 0; } }
 async function appRenew() {
   if (!(await netOk())) { toast('Ohne Netz lässt sich Live nicht aktualisieren.', 4000); return; }
@@ -3297,7 +3306,9 @@ if (!EMBED) {
   let rn = null; try { rn = JSON.parse(sessionStorage.getItem('lf-renewed') || 'null'); sessionStorage.removeItem('lf-renewed'); } catch (e) {}
   if (/[?&]neu=/.test(location.search)) try { const q = new URLSearchParams(location.search); q.delete('neu'); history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q : '')); } catch (e) {}
   if (rn) { setTimeout(() => toast('Live ist aktuell – Version ' + APPV + '.', 3500), 600); const last = store.get('last', null); if (rn.id && last && last.id === rn.id) setTimeout(() => openGoogle(last), 50); }
-  setTimeout(async () => { if (isOffline()) return; const v = await appFresh(); APP.v = v; if (v > APPV) toast('Neue Version von Live ist da: Werkzeuge → „Neue Version laden“.', 6000); }, 4000);
+  const upCheck = async () => { if (isOffline() || APP.v > APPV) return; const v = await appFresh(); APP.v = v; if (v > APPV) { $('tools').classList.add('upd'); toast('Neue Version von Live ist da: Werkzeuge → „Neue Version laden“. Beim nächsten Start kommt sie von selbst.', 7000); } };
+  setTimeout(upCheck, 4000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() - (APP.at || 0) > 60000) { APP.at = Date.now(); upCheck(); } });   // zurück in Live: nachsehen, nie selbst neu laden
 }
 { const b = $('hlbar'); for (const [c, [hx, n]] of Object.entries(HLC)) { const x = mk('button', 'hl-c'); x.type = 'button'; x.style.background = hx; x.title = n; x.setAttribute('aria-label', 'Markieren: ' + n); x.onmousedown = e => e.preventDefault(); x.onclick = () => hlApply(c); b.append(x); }
   const x = mk('button', 'hl-x', '✕'); x.type = 'button'; x.title = 'Markierung entfernen'; x.onmousedown = e => e.preventDefault(); x.onclick = () => hlApply(null); b.append(x);

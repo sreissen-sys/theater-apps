@@ -12,6 +12,7 @@
 body.sepia{--bg:#D8CDB4;--paper:#F6EEDC;--ink:#2E2618;--mute:#7A6A50;--line:#D9CBAE;--panel:#EFE5CF}
 body.dusk{--bg:#141210;--head:#0C0B0A;--paper:#2B2722;--ink:#D9CFC0;--mute:#9C9284;--line:#433C34;--panel:#25221E;--sel:rgba(217,122,0,.2);color-scheme:dark}
 body.night{--bg:#08090A;--paper:#15171A;--head:#000;--ink:#E8EAEE;--mute:#9AA1AC;--line:#2C3038;--panel:#111316;--sel:rgba(217,122,0,.22);color-scheme:dark}
+html:has(> body.sepia){background:#D8CDB4}html:has(> body.dusk){background:#141210}html:has(> body.night){background:#08090A}   /* Seitenhintergrund wie das Papier-Thema: sonst blitzt beim schnellen Scrollen unten Hellgrau durch */
 *{box-sizing:border-box}
 html,body{margin:0;overscroll-behavior:none}             /* kein Nachfedern am Anfang/Ende: sonst rutscht die Kopfleiste mit und es blitzt Weiß */
 html{background:var(--bg)}
@@ -2777,7 +2778,7 @@ async function exportViewPdf() {
   } catch (e) { toast('PDF: ' + (e.message || 'ging nicht'), 6000); }
 }
 /* ---------- Live selbst aktualisieren (allein; in Doppelpult macht das Doppelpult) ---------- */
-const APPV = 126;                                           // bei jeder neuen Version hochzählen
+const APPV = 127;                                           // bei jeder neuen Version hochzählen
 async function appFresh() { try { const r = await fetch(location.pathname + '?v=' + Date.now(), { cache: 'no-store' }); const m = /const APPV = (\d+);/.exec(await r.text()); return m ? +m[1] : 0; } catch (e) { return 0; } }
 async function appRenew() {
   if (!(await netOk())) { toast('Ohne Netz lässt sich Live nicht aktualisieren.', 4000); return; }

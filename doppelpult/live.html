@@ -252,6 +252,8 @@ html.spcol body.pgview .sheet[data-pglast]::after{display:none}
 .mini .md{position:absolute;left:8px;right:8px;bottom:6px;display:flex;gap:3px;flex-wrap:wrap;background:var(--paper)}
 .mini .md span{font-size:10px;border-radius:5px;padding:0 4px;color:#fff}
 .mini::after{content:"";position:absolute;left:0;right:0;bottom:24px;height:24px;background:linear-gradient(transparent,var(--paper))}
+.plist{display:flex;flex-direction:column;gap:6px;margin-top:4px}.prow{display:flex;flex-direction:column;padding:8px 10px;border-radius:8px;background:color-mix(in srgb,var(--ink) 6%,transparent)}.prow .pn{font-weight:600}.prow small{color:var(--mute)}
+#tp-body .srch+.srch,#tp-body .srch+.acts{margin-top:8px}
 .srch{width:100%;font:inherit;font-size:16px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--paper);color:var(--ink)}
 .hits{margin-top:6px}
 .hit{display:block;width:100%;text-align:left;font:inherit;background:none;border:0;border-bottom:1px solid var(--line);padding:7px 2px;cursor:pointer;color:var(--ink)}
@@ -709,6 +711,7 @@ async function srvLogin(prompt) {                           // einmaliges Anmeld
 }
 async function srvLogout() { try { await srvPost({ op: 'logout' }); } catch (e) {} SRV.has = false; clearTimeout(SRV.t); S.token = null; S.tokenExp = 0; }
 async function gToken(prompt = '') {
+  if (window.__lfTest?.token) { S.token = 'test'; S.tokenExp = Date.now() + 36e5; return S.token; }   // nur für automatische Tests
   if (await srvCheck()) { if (!prompt) { const t = await srvRefresh(); if (t) return t; } return srvLogin(prompt); }
   const c = cfg(); await loadScript('https://accounts.google.com/gsi/client');
   return new Promise((res, rej) => {
@@ -1184,6 +1187,8 @@ const isOffline = () => navigator.onLine === false;
 let offSaveT = 0;
 function offSave() {                                        // nach jedem neuen Stand aus Google: auf dem Gerät sichern (und die Bilder einmal holen, damit sie im Vorrat liegen)
   if (S.mode !== 'google' || !S.id || !S.json) return;
+  if (S.offSaved === S.json && S.offSavedName === S.name) { S.offT = S.offT || Date.now(); return; }   // schon gespeichert: nicht jede Minute die ganze Fassung neu schreiben und alle Bilder neu holen
+  S.offSaved = S.json; S.offSavedName = S.name;
   clearTimeout(offSaveT); const id = S.id, json = S.json, name = S.name, ver = S.ver;
   offSaveT = setTimeout(async () => {
     await OFF.put(id, { json, name, ver, t: Date.now() }); S.offT = Date.now();
@@ -1194,16 +1199,151 @@ function offSave() {                                        // nach jedem neuen 
 function offStatus() { if (S.offT) live('off', 'Offline – Stand vom ' + offWhen(S.offT)); else live('err', 'keine Verbindung'); }
 window.addEventListener('online', () => { if (S.mode === 'google' && S.id) { $('relogin').hidden = !(!S.token || Date.now() > S.tokenExp); refresh(true); } });
 window.addEventListener('offline', () => { if (S.mode === 'google' && S.id) offStatus(); });
+/* ---------- Regie Schritt 2: neue Fassung aus der Vorlage, Teilen und Einladen, Öffnen über einen Link ----------
+   Live darf nur Docs sehen, die man selbst anlegt oder im Google-Fenster auswählt (drive.file). Ein geteilter Link öffnet darum
+   das Google-Fenster mit genau dieser Fassung vorausgewählt – einmal tippen, dann ist sie freigegeben. */
+const LIVE_URL = 'https://livefassung.netlify.app/', EMBED_Q = /[?&]embed\b/.test(location.search);
+const docLink = id => LIVE_URL + '?doc=' + encodeURIComponent(id);
+const VORLAGE_GW = [['Licht (L)', '#E69138'], ['Ton (T)', '#0B8EA0'], ['Requisite (R)', '#38761D'], ['Kostüm (K)', '#9900FF'], ['Bühne (B)', '#1155CC'], ['Video (V)', '#FF00FF'], ['Musik (M)', '#CC0000']];
+function vorlage(name) {                                    // Inhalt einer neuen Fassung: Titel, Legende der Gewerke, ein Beispiel-Anfang
+  const L = [], st = [];
+  const line = (t, o = {}) => { L.push({ t, ...o }); };
+  line(name, { named: 'TITLE' });
+  line('Gewerke – jede Farbe ist ein Gewerk. In Live lassen sie sich einzeln ein- und ausblenden. Neue Gewerke: einfach eine Zeile in einer neuen Farbe dazuschreiben.', { c: '#666666', size: 9 });
+  for (const [g, c] of VORLAGE_GW) line(g, { c });
+  line('ERSTER AKT', { named: 'HEADING_1' });
+  line('1. Szene – Titel der Szene', { named: 'HEADING_2' });
+  line('Ort, Zeit. Wer ist auf der Bühne? (Regieanweisung: kursiv)', { i: true });
+  line('L: 1 Einlass', { c: '#E69138' });
+  line('M: Nr. 1 Ouvertüre', { c: '#CC0000' });
+  line('ROLLE A\tDer Text der Rolle steht nach dem Rollennamen und einem Tabulator.', { roleEnd: 7 });
+  line('ROLLE B\tSo erkennt Live, wer spricht – für die Ansicht „Rolle“ und für Auszüge.', { roleEnd: 7 });
+  line('(geht ab)', { i: true });
+  line('R: Stuhl links', { c: '#38761D' });
+  line('2. Szene – …', { named: 'HEADING_2' });
+  line('');
+  const text = L.map(x => x.t).join('\n') + '\n', req = [{ insertText: { location: { index: 1 }, text } }];
+  let i = 1; const rgb = h => ({ color: { rgbColor: { red: parseInt(h.slice(1, 3), 16) / 255, green: parseInt(h.slice(3, 5), 16) / 255, blue: parseInt(h.slice(5, 7), 16) / 255 } } });
+  for (const x of L) {
+    const a = i, b = i + x.t.length; i = b + 1;
+    if (x.named) req.push({ updateParagraphStyle: { range: { startIndex: a, endIndex: b + 1 }, paragraphStyle: { namedStyleType: x.named }, fields: 'namedStyleType' } });
+    if (!x.t.length) continue;
+    if (x.c) req.push({ updateTextStyle: { range: { startIndex: a, endIndex: b }, textStyle: { foregroundColor: rgb(x.c), ...(x.size ? { fontSize: { magnitude: x.size, unit: 'PT' } } : {}) }, fields: 'foregroundColor' + (x.size ? ',fontSize' : '') } });
+    if (x.i) req.push({ updateTextStyle: { range: { startIndex: a, endIndex: b }, textStyle: { italic: true }, fields: 'italic' } });
+    if (x.roleEnd) req.push({ updateTextStyle: { range: { startIndex: a, endIndex: a + x.roleEnd }, textStyle: { bold: true }, fields: 'bold' } });
+  }
+  return req;
+}
+function newDocDialog() {
+  openPanel('Neue Fassung', b => {
+    b.append(mk('p', 'fine', 'Legt in deinem Google Drive ein neues Doc an – mit Titel, Legende der Gewerke (Licht, Ton, Requisite, Kostüm, Bühne, Video, Musik) und einem Beispiel-Anfang. Alles lässt sich danach im Doc oder im Regie-Modus ändern.'));
+    const n = mk('input', 'srch'); n.type = 'text'; n.placeholder = 'Name der Fassung, z. B. „Tischlein deck dich – Fassung“'; n.maxLength = 120;
+    const r = mk('div', 'acts'), go = mk('button', 'btn pri', 'Anlegen'); go.type = 'button';
+    go.onclick = async () => {
+      const name = n.value.trim(); if (!name) { n.focus(); toast('Bitte einen Namen eingeben.'); return; }
+      go.disabled = true; go.textContent = 'Lege an …';
+      try {
+        S.mode = 'google'; await gToken('');
+        const f = await getJson('https://www.googleapis.com/drive/v3/files?fields=id,name', { method: 'POST', body: JSON.stringify({ name, mimeType: 'application/vnd.google-apps.document' }) });
+        await getJson(DOCS + encodeURIComponent(f.id) + ':batchUpdate', { method: 'POST', body: JSON.stringify({ requests: vorlage(name) }) });
+        $('tool-dlg').close(); const doc = { id: f.id, name: f.name || name }; store.set('last', doc); await openDoc(doc.id, doc.name);
+        toast('Neue Fassung angelegt. Teilen: Werkzeuge → „Teilen“.', 6000);
+      } catch (e) { go.disabled = false; go.textContent = 'Anlegen'; toast(e.login ? 'Bitte bei Google anmelden.' : 'Google: ' + (e.message || 'ging nicht'), 6000); }
+    };
+    r.append(go); b.append(n, r); setTimeout(() => n.focus(), 80);
+  }, null);
+  $('tp-print').hidden = true;
+}
+const ROLLEN = { reader: 'Lesen', commenter: 'Kommentieren', writer: 'Schreiben', owner: 'Besitzer:in', organizer: 'Verwaltung', fileOrganizer: 'Verwaltung' };
+function shareDialog() {
+  if (S.mode !== 'google' || !S.id) { toast('Teilen geht mit einer Google-Fassung.'); return; }
+  const id = S.id, link = docLink(id);
+  openPanel('Teilen', async b => {
+    b.append(mk('h3', 'sc', 'Link'));
+    b.append(mk('p', 'fine', 'Wer den Link öffnet, sieht die Fassung in Live – sofern sie oder er im Google Doc eingeladen ist (unten). Beim ersten Öffnen bestätigt man die Fassung einmal im Google-Fenster.'));
+    const lr = mk('div', 'acts left'), lf = mk('input', 'srch'); lf.readOnly = true; lf.value = link; lf.onclick = () => lf.select();
+    const cp = mk('button', 'btn', 'Link kopieren'); cp.type = 'button';
+    cp.onclick = async () => { try { await navigator.clipboard.writeText(link); toast('Link kopiert.'); } catch (e) { lf.select(); document.execCommand?.('copy'); toast('Link markiert – jetzt kopieren.'); } };
+    lr.append(cp);
+    if (navigator.share) { const sh = mk('button', 'btn', 'Teilen …'); sh.type = 'button'; sh.onclick = () => navigator.share({ title: S.name, text: 'Fassung „' + S.name + '“ in Live öffnen:', url: link }).catch(() => {}); lr.append(sh); }
+    b.append(lf, lr);
+    b.append(mk('h3', 'sc', 'Einladen'));
+    if (!S.canEdit) b.append(mk('p', 'fine', 'Einladen kann nur, wer das Doc bearbeiten darf.'));
+    const em = mk('input', 'srch'); em.type = 'email'; em.placeholder = 'E-Mail-Adressen, mit Komma getrennt'; em.autocomplete = 'email';
+    const role = mk('select', 'btn'); [['reader', 'darf lesen'], ['commenter', 'darf kommentieren'], ['writer', 'darf schreiben (Regie)']].forEach(([v, t]) => role.append(new Option(t, v))); role.value = 'writer';
+    const msg = mk('input', 'srch'); msg.type = 'text'; msg.placeholder = 'Nachricht (freiwillig)';
+    const ir = mk('div', 'acts left'), inv = mk('button', 'btn pri', 'Einladen'); inv.type = 'button'; ir.append(role, inv);
+    b.append(em, msg, ir);
+    const list = mk('div', 'plist'); b.append(mk('h3', 'sc', 'Haben Zugriff'), list);
+    const load = async () => {
+      list.textContent = ''; list.append(mk('p', 'fine', 'Lade …'));
+      try {
+        const j = await getJson(DRIVE + encodeURIComponent(id) + '/permissions?fields=permissions(id,type,role,emailAddress,displayName)&supportsAllDrives=true'); list.textContent = '';
+        for (const pm of j.permissions || []) {
+          const row = mk('div', 'prow'); row.append(mk('span', 'pn', pm.displayName || pm.emailAddress || (pm.type === 'anyone' ? 'Alle mit dem Link' : pm.type)), mk('small', '', (pm.emailAddress && pm.displayName ? pm.emailAddress + ' · ' : '') + (ROLLEN[pm.role] || pm.role)));
+          list.append(row);
+        }
+        if (!list.children.length) list.append(mk('p', 'fine', 'Noch niemand eingeladen.'));
+      } catch (e) { list.textContent = ''; list.append(mk('p', 'fine', 'Die Liste lässt sich nicht laden (' + (e.message || 'Fehler') + ').')); }
+    };
+    inv.onclick = async () => {
+      const mails = em.value.split(/[,;\s]+/).map(x => x.trim()).filter(x => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x));
+      if (!mails.length) { em.focus(); toast('Bitte mindestens eine gültige E-Mail-Adresse eingeben.'); return; }
+      inv.disabled = true; let ok = 0, bad = [];
+      const text = (msg.value.trim() ? msg.value.trim() + '\n\n' : '') + 'Öffne die Fassung „' + S.name + '“ in Live: ' + link;
+      for (const m of mails) {
+        try { await getJson(DRIVE + encodeURIComponent(id) + '/permissions?sendNotificationEmail=true&supportsAllDrives=true&emailMessage=' + encodeURIComponent(text), { method: 'POST', body: JSON.stringify({ type: 'user', role: role.value, emailAddress: m }) }); ok++; }
+        catch (e) { bad.push(m); }
+      }
+      inv.disabled = false; if (ok) { em.value = ''; toast(ok === 1 ? 'Eingeladen. Google schickt eine E-Mail mit dem Live-Link.' : ok + ' Personen eingeladen.'); load(); }
+      if (bad.length) toast('Nicht eingeladen: ' + bad.join(', ') + (S.canEdit ? '' : ' – du darfst dieses Doc nicht teilen.'), 7000);
+    };
+    load();
+  }, null);
+  $('tp-print').hidden = true;
+}
+async function gPickId(id) {                                // Google-Fenster mit genau dieser Fassung: einmal bestätigen = freigegeben
+  if (window.__lfTest?.pick) return window.__lfTest.pick(id);   // nur für automatische Tests
+  const c = cfg(); await loadScript('https://apis.google.com/js/api.js'); await new Promise(r => gapi.load('picker', r));
+  return new Promise(res => {
+    const v = new google.picker.DocsView(google.picker.ViewId.DOCUMENTS).setFileIds(id).setMode(google.picker.DocsViewMode.LIST);
+    const p = new google.picker.PickerBuilder().addView(v).enableFeature(google.picker.Feature.SUPPORT_DRIVES)
+      .setOAuthToken(S.token).setDeveloperKey(c.apiKey).setAppId(c.appId).setLocale('de').setTitle('Geteilte Fassung bestätigen')
+      .setCallback(d => { if (d.action === google.picker.Action.PICKED) res(d.docs[0]); else if (d.action === google.picker.Action.CANCEL) res(null); }).build();
+    p.setVisible(true);
+  });
+}
+async function openShared(id) {
+  await GOOGLE_FILE; const c = cfg(); if (!c.clientId || !c.apiKey || !c.appId) { cfgDialog(); return; }
+  try {
+    S.mode = 'google'; await gToken('');
+    let name = null;
+    try { name = (await getJson(DRIVE + encodeURIComponent(id) + '?fields=name&supportsAllDrives=true')).name; }
+    catch (e) {
+      if (e.login) throw e; const d = await gPickId(id);
+      if (!d) { S.mode = null; toast('Nicht geöffnet. Ohne Bestätigung darf Live die Fassung nicht lesen.', 6000); return; }
+      if (d.id !== id) toast('Eine andere Fassung gewählt – sie wird geöffnet.');
+      id = d.id; name = d.name;
+    }
+    try { history.replaceState(null, '', location.pathname); } catch (e) {}
+    const doc = { id, name: name || 'Fassung' }; store.set('last', doc); await openDoc(doc.id, doc.name);
+  } catch (e) { S.mode = null; toast(e.login ? 'Bitte bei Google anmelden.' : e.status === 404 || e.status === 403 ? 'Kein Zugriff auf diese Fassung. Bitte die Person, die sie geteilt hat, dich im Google Doc einzuladen.' : 'Google: ' + (e.message || 'ging nicht'), 8000); }
+}
+const SHARED_ID = (() => { if (EMBED_Q) return null; try { return new URLSearchParams(location.search).get('doc'); } catch (e) { return null; } })();
 function startScreen() {
   stopPoll(); S.mode = null; S.paras = []; $('hdr').hidden = true; $('bar').hidden = true; $('jump').hidden = true;
   const main = $('main'); main.textContent = ''; const box = mk('div', 'empty'); const last = store.get('last', null);
   box.append(mk('h1', '', 'Live-Fassung'), mk('p', '', 'Liest eine Google-Docs-Fassung live mit. Gewerke lassen sich nach ihrer Farbe ein- und ausblenden (schwarz = Text der Spielenden, kursiv = Regie); eigene Anweisungen landen direkt im Doc.'));
   const st = mk('div', 'stack');
   if (last) { const b = mk('button', 'btn pri resume'); b.append(mk('small', '', 'Weiterlesen'), mk('span', 't', last.name)); b.title = last.name; b.type = 'button'; b.onclick = () => openGoogle(last); st.append(b); }
-  const g = mk('button', 'btn' + (last ? '' : ' pri'), 'Google-Fassung öffnen'); g.type = 'button'; g.onclick = () => openGoogle(null);
+  if (SHARED_ID) {                                          // über einen Link gekommen: diese Fassung zuerst anbieten
+    const sh = mk('button', 'btn pri resume'); sh.append(mk('small', '', 'Mit dir geteilt'), mk('span', 't', 'Geteilte Fassung öffnen')); sh.type = 'button'; sh.onclick = () => openShared(SHARED_ID); st.append(sh);
+  }
+  const g = mk('button', 'btn' + (last || SHARED_ID ? '' : ' pri'), 'Google-Fassung öffnen'); g.type = 'button'; g.onclick = () => openGoogle(null);
+  const nw = mk('button', 'btn', 'Neue Fassung anlegen'); nw.type = 'button'; nw.onclick = newDocDialog;
   const d = mk('button', 'btn', 'Demo ansehen (erfundene Fassung)'); d.type = 'button'; d.onclick = openDemo;
   const k = mk('button', 'btn ghost cfg-btn', 'Google-Zugang ändern (Client-ID, API-Schlüssel, Projektnummer)'); k.type = 'button'; k.hidden = fixedCfg(); k.style.fontSize = '14px'; k.onclick = cfgDialog;
-  st.append(g, d, k); box.append(st);
+  st.append(g, nw, d, k); box.append(st);
   const offl = OFF.list();
   if (offl.length) {                                        // Fassungen auf diesem Gerät: öffnen auch ohne Netz
     const h = mk('div', 'offlist'); h.append(mk('h3', '', 'Auf diesem Gerät' + (isOffline() ? ' – ohne Netz verfügbar' : '')));
@@ -1282,15 +1422,18 @@ async function refresh(force) {
     if (!force && S.rev && S.mode !== 'demo' && Date.now() - (S.metaT || 0) < 60000 && !(S.json && (S.json.inlineObjects || S.json.positionedObjects) && Date.now() - (S.jsonT || 0) > 20 * 60e3)) {
       const q = await getJson(DOCS + encodeURIComponent(S.id) + '?fields=revisionId');
       if (q.revisionId === S.rev) { const was = S.offT; S.lastOk = Date.now(); S.offT = 0; live('on'); if (was) offSave(); return; }
-      const doc = await getJson(DOCS + encodeURIComponent(S.id)); S.jsonT = Date.now(); apply(doc); S.lastOk = Date.now(); S.offT = 0; live('on'); offSave(); return;
+      const doc = await getJson(DOCS + encodeURIComponent(S.id)); S.jsonT = Date.now(); applySoon(doc); S.lastOk = Date.now(); S.offT = 0; live('on'); return;
     }
     const meta = await getJson(DRIVE + encodeURIComponent(S.id) + '?fields=version,name,capabilities/canEdit&supportsAllDrives=true'); S.metaT = Date.now();
     S.canEdit = !!meta.capabilities?.canEdit; if (meta.name && meta.name !== S.name) { S.name = meta.name; $('docname').textContent = meta.name; }
     // Bild-Adressen von Google gelten nur kurz: aus dem Vorrat geöffnete oder ältere Stände mit Bildern neu holen
     const stale = !!(S.json && (S.json.inlineObjects || S.json.positionedObjects) && Date.now() - (S.jsonT || 0) > 20 * 60e3);
-    if (force || stale || meta.version !== S.ver) {
-      const doc = await getJson(DOCS + encodeURIComponent(S.id)); S.ver = meta.version; S.jsonT = Date.now(); apply(doc);
-    }
+    // Die Datei-Version steigt auch, wenn nur „Folgen“ oder Regie-Anwesenheit (Datei-Eigenschaften) geschrieben werden –
+    // dann nicht die ganze Fassung neu holen und neu aufbauen (das ließ Live jede Minute kurz hängen), nur bei echtem neuen Text
+    let chg = force || (S.rev == null && meta.version !== S.ver);
+    if (!chg && (stale || meta.version !== S.ver)) { const q = await getJson(DOCS + encodeURIComponent(S.id) + '?fields=revisionId'); chg = q.revisionId !== S.rev; if (!chg) S.ver = meta.version; }
+    if (chg) { const doc = await getJson(DOCS + encodeURIComponent(S.id)); S.ver = meta.version; S.jsonT = Date.now(); if (force) apply(doc); else applySoon(doc); }
+    else if (stale) { const doc = await getJson(DOCS + encodeURIComponent(S.id)); S.jsonT = Date.now(); if (doc.revisionId === S.rev) imgRefresh(doc); else applySoon(doc); }   // nur neue Bild-Adressen: still, ohne Neuaufbau
     S.lastOk = Date.now(); S.offT = 0; live('on'); offSave();
   } catch (e) {
     let net = isOffline() || !!e.net;
@@ -1306,6 +1449,27 @@ async function refresh(force) {
     }
   }
   finally { S.busy = false; }
+}
+/* Neuer Stand aus Google: nicht mitten im Schreiben, Blättern oder Scrollen neu aufbauen, sondern in der nächsten kurzen Pause */
+const ACT = { t: 0 };
+['pointerdown', 'touchmove', 'wheel', 'keydown'].forEach(ev => addEventListener(ev, () => { ACT.t = Date.now(); }, { passive: true, capture: true }));
+const busyNow = () => Date.now() - Math.max(ACT.t, window.__dpAct || 0) < 1500 || Date.now() - (window.__dpPenT || 0) < 2500;
+function applySoon(doc) {
+  if (S.first || !busyNow()) { clearTimeout(S.apT); S.apDoc = null; S.apT0 = 0; apply(doc); offSave(); return; }
+  S.apDoc = doc; S.rev = doc.revisionId; if (!S.apT0) S.apT0 = Date.now(); clearTimeout(S.apT);   // schon als bekannt merken: nicht alle 3 s erneut holen
+  const go = () => {
+    if (!S.apDoc) return; if (busyNow() && Date.now() - S.apT0 < 15000) { S.apT = setTimeout(go, 600); return; }   // höchstens 15 s warten
+    const d = S.apDoc; S.apDoc = null; S.apT0 = 0; if (d.documentId && S.id && d.documentId !== S.id) return; apply(d); offSave();
+  };
+  S.apT = setTimeout(go, 600);
+}
+function imgRefresh(doc) {                                  // Google erneuert die Bild-Adressen: nur austauschen, nichts neu aufbauen
+  const urls = d => { const o = { ...(d.inlineObjects || {}), ...(d.positionedObjects || {}) }; const m = new Map(); for (const [id, x] of Object.entries(o)) { const u = (x.inlineObjectProperties || x.positionedObjectProperties)?.embeddedObject?.imageProperties?.contentUri; if (u) m.set(id, u); } return m; };
+  const a = urls(S.json || {}), b = urls(doc), swap = new Map(); for (const [id, u] of a) if (b.has(id) && b.get(id) !== u) swap.set(u, b.get(id));
+  S.json = doc; if (!swap.size) return;
+  const fix = l => l.forEach(p => { if (p.kind === 'table') return p.rows.forEach(r => r.forEach(fix)); for (const r of p.runs || []) if (r.img && swap.has(r.img.src)) r.img.src = swap.get(r.img.src); }); fix(S.paras);
+  for (const im of document.querySelectorAll('#main img')) { const n = swap.get(im.getAttribute('src')); if (n && !(im.complete && im.naturalWidth)) im.src = n; }   // schon geladene Bilder bleiben, wie sie sind
+  offSave();
 }
 function apply(doc) {
   const old = new Set(), collect = l => l.forEach(p => p.kind === 'table' ? p.rows.forEach(r => r.forEach(collect)) : old.add(p.key)); collect(S.paras);
@@ -1540,9 +1704,12 @@ document.addEventListener('keydown', e => {                // Tastatur am Rechne
   if (e.key === 'Enter') { e.preventDefault(); if (S.caret) openAdd(false, true); else if (S.seg) openAdd(true); return; }
   if ((e.key === 'Delete' || e.key === 'Backspace') && S.seg) { e.preventDefault(); $('bar-del').click(); }
 });
+var HDR = { hold: 0 };
+$('hdr').addEventListener('pointerdown', () => { HDR.hold = Date.now() + 2500; }, true);   // in der Leiste getippt: sie bleibt stehen
 let lastY = window.scrollY, upRun = 0;                     // Kopfzeile ausblenden beim Lesen; zurück erst nach deutlichem Hochscrollen (ca. 140 px am Stück)
 window.addEventListener('scroll', () => {
   if (SP.on) return;                                       // Doppelseite: Leiste nur über den Knopf
+  if (Date.now() < HDR.hold) { lastY = window.scrollY; upRun = 0; return; }   // Live hat selbst verschoben (Umbau, Papier, Schrift) oder die Leiste wird gerade benutzt: nicht einklappen
   const y = window.scrollY, dy = y - lastY, h = $('hdr');
   upRun = dy < 0 ? upRun - dy : dy > 2 ? 0 : upRun;
   if (y < 60 || upRun > 140) h.classList.remove('hide'); else if (dy > 4 && !document.querySelector('dialog[open]')) h.classList.add('hide');
@@ -1712,7 +1879,7 @@ $('paper').onclick = () => setPaper(PAPERS[(PAPERS.indexOf(paper) + 1) % PAPERS.
 $('fs-dn').onclick = () => { const a = anchor(); setFs(fs - 1); keepAt(a); };
 $('fs-up').onclick = () => { const a = anchor(); setFs(fs + 1); keepAt(a); };
 function scrollByFree(dy) {                                 // auch bei offenem Fenster verschieben (iPad ignoriert Scrollen, solange die Seite gesperrt ist)
-  if (!dy || SP.on) return; const de = document.documentElement, lock = de.classList.contains('dlg-open');
+  if (!dy || SP.on) return; HDR.hold = Date.now() + 700; const de = document.documentElement, lock = de.classList.contains('dlg-open');
   if (lock) de.classList.remove('dlg-open'); window.scrollBy(0, dy); if (lock) de.classList.add('dlg-open');
 }
 function keepAt(a) { if (!a) return; const e = [...document.querySelectorAll('#main [data-k]')].find(x => x.dataset.k === a.k); if (e) scrollByFree(e.getBoundingClientRect().top - a.y); }
@@ -1730,9 +1897,10 @@ function switchDialog() {
     b.append(mk('h3', 'sc', 'Andere Fassung'));
     const r = mk('div', 'acts left');
     const g = mk('button', 'btn', 'Aus Google Drive wählen …'); g.type = 'button'; g.onclick = () => go(() => openGoogle(null));
+    const nw = mk('button', 'btn', 'Neue Fassung anlegen …'); nw.type = 'button'; nw.onclick = () => newDocDialog();
     const d = mk('button', 'btn', 'Demo ansehen'); d.type = 'button'; d.onclick = () => go(openDemo);
     const h = mk('button', 'btn ghost', 'Zur Startseite'); h.type = 'button'; h.onclick = () => go(startScreen);
-    r.append(g, d, h); b.append(r);
+    r.append(g, nw, d, h); b.append(r);
   }, null);
   $('tp-print').hidden = true;
 }
@@ -2778,7 +2946,7 @@ async function exportViewPdf() {
   } catch (e) { toast('PDF: ' + (e.message || 'ging nicht'), 6000); }
 }
 /* ---------- Live selbst aktualisieren (allein; in Doppelpult macht das Doppelpult) ---------- */
-const APPV = 127;                                           // bei jeder neuen Version hochzählen
+const APPV = 128;                                           // bei jeder neuen Version hochzählen
 async function appFresh() { try { const r = await fetch(location.pathname + '?v=' + Date.now(), { cache: 'no-store' }); const m = /const APPV = (\d+);/.exec(await r.text()); return m ? +m[1] : 0; } catch (e) { return 0; } }
 async function appRenew() {
   if (!(await netOk())) { toast('Ohne Netz lässt sich Live nicht aktualisieren.', 4000); return; }
@@ -2867,6 +3035,8 @@ function showMenu() {
       b.append(mk('p', 'fine', 'A4-Seiten genau wie im PDF-Export: neue Seite, wenn die Seite voll ist oder an einem Umbruch aus dem Doc. Ein Absatz kommt mit seinen Notizen und Marken immer ganz auf eine Seite; die Seitenzahlen sind die von Live.'));
       b.append(mk('p', 'fine', '„Vor Abschnitten“: ein Umbruch aus dem Doc gilt nur vor einer Überschrift, einem Akt, einer Szene, einem Zwischenspiel, Finale o. Ä.; die übrigen zeigt Live als gestrichelte Linie. Antippen von Seitenstreifen oder Linie legt es für diese Stelle fest. „Kürzen“ spart nur in der Anzeige Leerraum – Seiten und PDF bleiben gleich.'));
     } else b.append(mk('p', 'fine', 'Teilt die Fassung in A4-Seiten wie im PDF-Export – z. B. für „wir machen ab Seite 34“.'));
+    if (S.mode === 'google' && S.id) { b.append(mk('h3', 'sc', 'Teilen'));
+      const r = mk('div', 'acts left'), t = mk('button', 'btn', 'Link und Einladungen …'); t.type = 'button'; t.onclick = shareDialog; r.append(t, mk('span', 'fine', 'Andere in die Fassung einladen – lesen, kommentieren oder mitschreiben.')); b.append(r); }
     if (!EMBED) { b.append(mk('h3', 'sc', 'App'));                                          // Live aktualisieren
       const r = mk('div', 'acts left appup'), nw = APP.v > APPV;
       const u = mk('button', 'btn' + (nw ? ' pri' : '')); u.type = 'button';
@@ -3054,7 +3224,7 @@ function folChip() {
   c.title = paused ? 'Pausiert, weil du selbst scrollst – geht gleich weiter. Antippen beendet das Folgen.' : 'Antippen beendet das Folgen.';
 }
 { const row = $('hdr').querySelector('.row'), fit = () => { cancelAnimationFrame(fit.r); fit.r = requestAnimationFrame(fitHeader); };
-  new ResizeObserver(fit).observe($('hdr')); new MutationObserver(fit).observe(row, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['hidden'] }); }
+  new ResizeObserver(fit).observe($('hdr')); new MutationObserver(ms => { if (ms.every(m => m.target.closest?.('#live') || m.target.parentElement?.closest('#live'))) return; fit(); }).observe(row, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['hidden'] }); }   // die laufende Uhrzeit allein misst die Leiste nicht neu aus
 $('follow-chip').onclick = () => { FOL.follow = null; folChip(); toast('Folgen beendet.'); };
 ['wheel', 'touchmove', 'keydown'].forEach(ev => window.addEventListener(ev, () => { if (FOL.follow && Date.now() - FOL.self > 900) { FOL.hold = Date.now() + 6000; folChip(); } }, { passive: true }));
 window.addEventListener('scroll', () => { if (folShare()?.on) { clearTimeout(folSend.t); folSend.t = setTimeout(() => folSend(), 700); } }, { passive: true });

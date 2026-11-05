@@ -1735,7 +1735,7 @@ function openAdd(edit, here) {
   $('add-ok').textContent = edit ? 'Speichern' : 'Einfügen';
   $('add-fine').textContent = S.here ? 'Wird genau an der markierten Stelle in die Zeile eingefügt (Leerzeichen werden ergänzt).' : !edit ? 'Wird mit je einer Leerzeile davor und danach ins Google Doc eingefügt und ist für alle sichtbar.' : seg.whole ? 'Die Zeile wird im Google Doc ersetzt.' : 'Nur dieser Teil der Zeile wird im Google Doc ersetzt, der Rest bleibt.' + (S.editing.n > 1 ? ' (Weitere Teile deines Gewerks in dieser Zeile bleiben unverändert.)' : '');
   $('add-where').textContent = S.here ? $('bar-q').textContent : edit ? '' : 'Unter: „' + (S.blk?.text ?? S.sel.text).replace(/\s+/g, ' ').slice(-80) + '“';
-  $('add-txt').value = edit ? tr(seg.text) : ''; addPreview(); $('add-dlg').showModal(); try { $('add-txt').focus({ preventScroll: true }); } catch (e) {} setTimeout(() => { if (document.activeElement !== $('add-txt')) $('add-txt').focus(); }, 60);   // sofort im Tipp fokussieren: nur dann öffnet das iPad die Tastatur
+  $('add-txt').value = edit ? seg.text.replace(/[\u000b\r]/g, '\n').split('\n').map(l => tr(l)).join('\n').trim() : ''; addPreview(); $('add-dlg').showModal(); try { $('add-txt').focus({ preventScroll: true }); } catch (e) {} setTimeout(() => { if (document.activeElement !== $('add-txt')) $('add-txt').focus(); }, 60);   // sofort im Tipp fokussieren: nur dann öffnet das iPad die Tastatur
 }
 $('bar-add').onclick = () => openAdd(false);
 $('bar-here').onclick = () => openAdd(false, true);
@@ -1751,7 +1751,8 @@ $('add-gw').onchange = () => { const f = defFmt($('add-gw').value); $('add-b').c
 $('add-txt').oninput = addPreview; $('add-b').onchange = addPreview; $('add-i').onchange = addPreview;
 $('add-dlg').addEventListener('close', async () => {
   if ($('add-dlg').returnValue !== 'ok') { S.editing = null; return; }
-  const txt = $('add-txt').value.replace(/\s*[\r\n]+\s*/g, ' ').trim(), cid = $('add-gw').value;
+  // Zeilenumbrüche bleiben – als Umbruch innerhalb des Absatzes (wie Umschalt+Eingabe im Doc), damit die Anweisung EIN Absatz bleibt
+  const txt = $('add-txt').value.replace(/\r\n?/g, '\n').split('\n').map(l => l.replace(/\s+$/, '')).join('\n').replace(/\n{3,}/g, '\n\n').trim().replace(/\n/g, '\u000b'), cid = $('add-gw').value;
   if (!txt || !S.sel) return;
   if (cid !== 'regie' && cid !== 'text') { P().me = cid; savePrefs(); }
   const c = WRITE_CATS().find(x => x.id === cid), st = { hex: c?.hex || null, b: $('add-b').checked, i: $('add-i').checked };
@@ -2952,7 +2953,7 @@ async function exportViewPdf() {
   } catch (e) { toast('PDF: ' + (e.message || 'ging nicht'), 6000); }
 }
 /* ---------- Live selbst aktualisieren (allein; in Doppelpult macht das Doppelpult) ---------- */
-const APPV = 130;                                           // bei jeder neuen Version hochzählen
+const APPV = 131;                                           // bei jeder neuen Version hochzählen
 async function appFresh() { try { const r = await fetch(location.pathname + '?v=' + Date.now(), { cache: 'no-store' }); const m = /const APPV = (\d+);/.exec(await r.text()); return m ? +m[1] : 0; } catch (e) { return 0; } }
 async function appRenew() {
   if (!(await netOk())) { toast('Ohne Netz lässt sich Live nicht aktualisieren.', 4000); return; }

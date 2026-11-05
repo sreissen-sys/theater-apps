@@ -2868,17 +2868,20 @@ function pgLater(ms) { clearTimeout(PG.rt); PG.rt = setTimeout(() => { const q =
 /* ---------- Doppelseite: im Querformat zwei A4-Seiten nebeneinander, blättern statt scrollen ----------
    Live bricht wie immer nach A4 um (gemessen in einer Spalte), danach stehen die Seiten als Spalten nebeneinander.
    Jede Seite beginnt eine neue Spalte – Absätze und Notizen werden so nie geteilt. */
-const SP = { hw: 0, hide: (() => { try { return localStorage.getItem('lf-sphide') === '1'; } catch (e) { return false; } })(), on: false, dp: false, step: 2, c0: 0, n: 1, wp: 0, gap: 28, pl: 30, pr: 30, pt: 24, pb: 12, ak: null };
-const spWant = () => !PG.full && (EMBED ? SP.dp : P()?.pg === 2) && innerWidth > innerHeight * 1.12 && innerWidth >= 700;
+const SP = { hw: 0, hide: (() => { try { return localStorage.getItem('lf-sphide') === '1'; } catch (e) { return false; } })(), on: false, dp: false, one: false, o1: false, step: 2, c0: 0, n: 1, wp: 0, gap: 28, pl: 30, pr: 30, pt: 24, pb: 12, ak: null };
+const spLand = () => innerWidth > innerHeight * 1.12 && innerWidth >= 700;
+// Doppelpult: seitenweise blättern – zwei Seiten nebeneinander (quer) oder eine Seite (Einzelseite, oder Doppelseite im Hochformat)
+const spWant = () => !PG.full && (EMBED ? SP.dp : P()?.pg === 2 && spLand());
+const spStp = () => (SP.o1 ? 1 : SP.step);
 const pgOn = () => !!P()?.pg || spWant();
 function spPre() {                                         // vor dem Umbrechen: Breite einer Seite festlegen, Spalten aus (gemessen wird untereinander)
   const de = document.documentElement, want = pgOn() && spWant() && !!$('main').querySelector('.sheet');
   de.classList.remove('spcol');
-  if (!want) { if (SP.on) { de.classList.remove('spread'); ['--wp', '--spx', '--spw', '--sph', '--spn', '--spg', '--sps'].forEach(v => de.style.removeProperty(v)); } SP.on = false; return; }
+  if (!want) { if (SP.on) { de.classList.remove('spread'); ['--wp', '--spx', '--spw', '--sph', '--spn', '--spg', '--sps'].forEach(v => de.style.removeProperty(v)); } SP.on = false; spBadge(); return; }
   const h = $('hdr'); h.classList.remove('hide');               // Kopfzeile nur über der linken Seite, ausblendbar
   spHdrBtns(); document.documentElement.classList.toggle('sphide', SP.hide);
-  const avH = innerHeight - 14, avW = innerWidth - SP.hw - 24;
-  SP.wp = Math.floor(Math.max(260, Math.min(820, (avH - SP.pt - SP.pb + 22) / 1.4142, (avW - SP.gap) / 2)));
+  const avH = innerHeight - 14, avW = innerWidth - SP.hw - 24; SP.o1 = EMBED && (SP.one || !spLand());
+  SP.wp = Math.floor(Math.max(260, Math.min(820, (avH - SP.pt - SP.pb + 22) / 1.4142, SP.o1 ? avW : (avW - SP.gap) / 2)));
   de.classList.add('spread'); de.style.setProperty('--wp', SP.wp + 'px'); SP.on = true;
   if (scrollY) window.scrollTo(0, 0);
 }
@@ -2901,15 +2904,15 @@ function spHdrBtns() {                                     // Kopfzeile aus-/ein
 function spGeo() { const sh = $('main').querySelector('.sheet'), r = sh?.getBoundingClientRect(); return r ? { x: r.left + SP.pl, st: SP.wp + SP.gap } : null; }
 function spCol(el, G) { G = G || spGeo(); if (!G || !el) return 0; const r = el.getBoundingClientRect(); return Math.max(0, Math.round((r.left + 6 - G.x) / G.st)); }   // auf welcher Seite (Spalte) steht der Absatz?
 function spGo(c, quiet) {
-  if (!SP.on) return; c = Math.max(0, Math.min(SP.n - 1, Math.round(c) || 0)); if (SP.step === 2) c -= c % 2;
-  const L = SP.L = SP.hw + Math.max(12, (innerWidth - SP.hw - (2 * SP.wp + SP.gap)) / 2), de = document.documentElement, w2 = c + 1 < SP.n ? 2 * SP.wp + SP.gap : SP.wp;
+  if (!SP.on) return; c = Math.max(0, Math.min(SP.n - 1, Math.round(c) || 0)); if (spStp() === 2) c -= c % 2;
+  const L = SP.L = SP.hw + Math.max(12, (innerWidth - SP.hw - (SP.o1 ? SP.wp : 2 * SP.wp + SP.gap)) / 2), de = document.documentElement, w2 = c + 1 < SP.n && !SP.o1 ? 2 * SP.wp + SP.gap : SP.wp;
   de.style.setProperty('--spx', (L - c * (SP.wp + SP.gap)) + 'px'); de.style.setProperty('--spl', Math.max(0, L - 2) + 'px'); de.style.setProperty('--spr', Math.max(0, innerWidth - L - w2 - 2) + 'px'); de.style.setProperty('--hdw', Math.max(360, Math.round(L + SP.wp)) + 'px');   // nur die zwei Seiten sichtbar
   const moved = c !== SP.c0; SP.c0 = c;
   const G = spGeo(), first = [...document.querySelectorAll('#main [data-k]')].find(e => e.getBoundingClientRect().height && spCol(e, G) >= c); SP.ak = first?.dataset.k || SP.ak;
   spBadge();
   if (moved || !quiet) { window.dispatchEvent(new Event('scroll')); }   // wie Scrollen: Song folgen, Doppelpult zeichnet nach
 }
-function spStep(dir) { if (!SP.on) return false; const t = SP.c0 + dir * SP.step; if (t < 0 || t > SP.n - 1) return false; spGo(t); return true; }
+function spStep(dir) { if (!SP.on) return false; const t = SP.c0 + dir * spStp(); if (t < 0 || t > SP.n - 1) return false; spGo(t); return true; }
 function spShowEl(el, quiet) { if (!SP.on || !el) return; const c = spCol(el); spGo(c, quiet); }
 function spShowKey(k, quiet) { const e = k && [...document.querySelectorAll('#main [data-k]')].find(x => x.dataset.k === k); if (e) spShowEl(e, quiet); else spGo(SP.c0, quiet); }
 function spLeave(k) {                                      // zurück zu untereinander: dieselbe Seite oben zeigen
@@ -2921,11 +2924,11 @@ function spBadge() {                                       // „Seite 3–4 / 1
   b?.remove(); const a = SP.c0 + 1;                        // Seitenzahl unten rechts auf jedem Blatt (n / gesamt)
   const sh = $('main').querySelector('.sheet'), r = sh?.getBoundingClientRect(); if (!r) return;   // Seitenzahl unten rechts auf jedem Blatt
   [a, a + 1].forEach((n, i) => { let e = $('sp-num' + i); if (!e) { e = mk('div', 'sp-num'); e.id = 'sp-num' + i; document.body.append(e); }
-    e.hidden = n > SP.n; e.textContent = 'Seite ' + n + ' / ' + SP.n; e.style.left = (SP.L + i * (SP.wp + SP.gap) + SP.wp - 12) + 'px'; e.style.top = (r.bottom - 20) + 'px'; });
+    e.hidden = n > SP.n || (i && SP.o1); e.textContent = 'Seite ' + n + ' / ' + SP.n; e.style.left = (SP.L + i * (SP.wp + SP.gap) + SP.wp - 12) + 'px'; e.style.top = (r.bottom - 20) + 'px'; });
 }
-function setSpread(o) {                                    // Doppelpult: Doppelseite an/aus, um 1 oder 2 Seiten blättern
-  const on = !!o?.on, k = o?.step === 1 ? 1 : 2; if (on === SP.dp && k === SP.step) return;
-  SP.dp = on; SP.step = k; pgDraw();
+function setSpread(o) {                                    // Doppelpult: seitenweise an/aus, eine Seite (one) oder Doppelseite, um 1 oder 2 Seiten blättern
+  const on = !!o?.on, one = !!o?.one, k = o?.step === 1 ? 1 : 2; if (on === SP.dp && one === SP.one && k === SP.step) return;
+  SP.dp = on; SP.one = one; SP.step = k; pgDraw();
 }
 addEventListener('resize', () => { clearTimeout(SP.rt); SP.rt = setTimeout(() => { if (SP.on !== spWant() || SP.on) pgDraw(); }, 160); });
 (() => {                                                   // Wischen nach links/rechts blättert (nicht, während Doppelpult schreibt)
@@ -2953,7 +2956,7 @@ async function exportViewPdf() {
   } catch (e) { toast('PDF: ' + (e.message || 'ging nicht'), 6000); }
 }
 /* ---------- Live selbst aktualisieren (allein; in Doppelpult macht das Doppelpult) ---------- */
-const APPV = 131;                                           // bei jeder neuen Version hochzählen
+const APPV = 132;                                           // bei jeder neuen Version hochzählen
 async function appFresh() { try { const r = await fetch(location.pathname + '?v=' + Date.now(), { cache: 'no-store' }); const m = /const APPV = (\d+);/.exec(await r.text()); return m ? +m[1] : 0; } catch (e) { return 0; } }
 async function appRenew() {
   if (!(await netOk())) { toast('Ohne Netz lässt sich Live nicht aktualisieren.', 4000); return; }

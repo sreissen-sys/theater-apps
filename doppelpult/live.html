@@ -95,6 +95,8 @@ body.dusk .sheet img,body.night .sheet img{opacity:.88}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:max(84px,calc(env(safe-area-inset-bottom) + 76px));z-index:40;background:#1D2129;color:#fff;border-radius:10px;padding:10px 14px;display:flex;gap:12px;align-items:center;box-shadow:0 6px 24px rgba(0,0,0,.25);max-width:calc(100vw - 24px)}
 .toast button{background:none;border:0;color:#FFB54D;font-weight:700;cursor:pointer;padding:4px}
 .jump{position:fixed;right:16px;bottom:max(16px,env(safe-area-inset-bottom));z-index:29}
+@media (pointer:coarse){#add-dlg{margin-top:8px;margin-bottom:auto}}   /* iPad: oben, damit die Tastatur das Textfeld nicht verdeckt */
+#add-dlg[open]{max-height:calc(100dvh - var(--kbb,0px) - 16px);overflow:auto;overscroll-behavior:contain}
 dialog{border:0;border-radius:14px;padding:0;background:var(--panel);color:var(--ink);width:min(560px,calc(100vw - 24px));box-shadow:0 20px 60px rgba(0,0,0,.35)}
 dialog::backdrop{background:rgba(0,0,0,.35)}
 .dlg{padding:20px}
@@ -582,11 +584,11 @@ body.embed #close .ic{display:block;width:18px;height:18px}
 <dialog id="add-dlg"><form class="dlg" method="dialog" id="add-form">
   <h2 id="add-h">Anweisung einfügen</h2>
   <div class="fine" id="add-where"></div>
+  <label for="add-txt">Text</label>
+  <textarea id="add-txt" placeholder="z. B. M: Einsatz nach „…festhält“"></textarea>
   <label for="add-gw">Gewerk (bestimmt die Farbe im Dokument)</label>
   <select id="add-gw"></select>
   <div class="fmt"><label><input type="checkbox" id="add-b"> <b>Fett</b></label><label><input type="checkbox" id="add-i"> <i>Kursiv</i></label></div>
-  <label for="add-txt">Text</label>
-  <textarea id="add-txt" placeholder="z. B. M: Einsatz nach „…festhält“"></textarea>
   <div class="prev" id="add-prev"></div>
   <p class="fine" id="add-fine">Wird sofort im Google Doc eingefügt und ist für alle sichtbar.</p>
   <div class="acts"><button class="btn" value="cancel" type="submit">Abbrechen</button><button class="btn pri" id="add-ok" value="ok" type="submit">Einfügen</button></div>
@@ -1471,6 +1473,10 @@ function imgRefresh(doc) {                                  // Google erneuert d
   for (const im of document.querySelectorAll('#main img')) { const n = swap.get(im.getAttribute('src')); if (n && !(im.complete && im.naturalWidth)) im.src = n; }   // schon geladene Bilder bleiben, wie sie sind
   offSave();
 }
+/* Bildschirmtastatur: der Teil des Fensters, den sie verdeckt (--kbb). Allein misst Live selbst, in Doppelpult meldet es Doppelpult. */
+function kbSet(px) { px = Math.max(0, Math.round(px || 0)); document.documentElement.style.setProperty('--kbb', px + 'px'); const t = document.activeElement; if (px && t?.closest?.('dialog[open]') && /TEXTAREA|INPUT/.test(t.tagName)) setTimeout(() => { try { t.scrollIntoView({ block: 'nearest' }); } catch (e) {} }, 30); }
+if (window.visualViewport && !EMBED_Q) visualViewport.addEventListener('resize', () => kbSet(innerHeight - visualViewport.height - visualViewport.offsetTop));
+addEventListener('message', e => { if (e.origin === location.origin && e.data?.dp === 'kb') kbSet(e.data.px); });
 function apply(doc) {
   const old = new Set(), collect = l => l.forEach(p => p.kind === 'table' ? p.rows.forEach(r => r.forEach(collect)) : old.add(p.key)); collect(S.paras);
   const paras = parse(doc), { legend, cats } = classify(paras);
@@ -2946,7 +2952,7 @@ async function exportViewPdf() {
   } catch (e) { toast('PDF: ' + (e.message || 'ging nicht'), 6000); }
 }
 /* ---------- Live selbst aktualisieren (allein; in Doppelpult macht das Doppelpult) ---------- */
-const APPV = 129;                                           // bei jeder neuen Version hochzählen
+const APPV = 130;                                           // bei jeder neuen Version hochzählen
 async function appFresh() { try { const r = await fetch(location.pathname + '?v=' + Date.now(), { cache: 'no-store' }); const m = /const APPV = (\d+);/.exec(await r.text()); return m ? +m[1] : 0; } catch (e) { return 0; } }
 async function appRenew() {
   if (!(await netOk())) { toast('Ohne Netz lässt sich Live nicht aktualisieren.', 4000); return; }

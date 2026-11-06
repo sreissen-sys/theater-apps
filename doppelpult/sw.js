@@ -1,5 +1,5 @@
-// Doppelpult: Offline-Baustein. Stand 4f4d137e
-const CACHE = 'doppelpult-4f4d137e';
+// Doppelpult: Offline-Baustein. Stand 32a576a0
+const CACHE = 'doppelpult-32a576a0';
 const FILES = [
  "./",
  "fonts/sofia-sans-extra-condensed-latin-600-normal.woff2",

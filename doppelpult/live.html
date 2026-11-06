@@ -755,7 +755,7 @@ const conflict = e => e.status === 400 && /revision/i.test(e.message || '') || e
 /* ---------- Dokument lesen und ordnen ---------- */
 function parse(doc) {
   const paras = [], inl = doc.inlineObjects || {}, pos = doc.positionedObjects || {};
-  const imgOf = (eo) => { const ip = eo?.imageProperties; if (!ip?.contentUri) return null; const w = eo.size?.width?.magnitude; return { src: ip.contentUri, w: w ? Math.round(w * 4 / 3) : null }; };
+  const imgOf = (eo) => { const ip = eo?.imageProperties; if (!ip?.contentUri) return null; const w = eo.size?.width?.magnitude, h = eo.size?.height?.magnitude; return { src: ip.contentUri, w: w ? Math.round(w * 4 / 3) : null, ar: w && h ? w / h : null }; };
   const walk = (content, out) => {
     for (const el of content || []) {
       if (el.paragraph) {
@@ -947,7 +947,7 @@ function runSpan(r, plan) {
       return fr;
     }
   }
-  if (r.img) { const im = new Image(); im.src = r.img.src; im.alt = 'Bild aus der Fassung'; im.loading = 'lazy'; if (r.img.w) im.style.width = Math.min(r.img.w, 760) + 'px'; im.referrerPolicy = 'no-referrer'; if (IMGFB.has(r.img.src)) im.src = IMGFB.get(r.img.src); im.onerror = () => imgFallback(im, r.img.src); return im; }
+  if (r.img) { const im = new Image(); im.src = r.img.src; im.alt = 'Bild aus der Fassung'; im.loading = 'lazy'; if (r.img.w) im.style.width = Math.min(r.img.w, 760) + 'px'; if (r.img.ar) im.style.aspectRatio = String(r.img.ar);   /* Platz schon vor dem Laden: sonst rutscht der Text beim Nachladen (iPad gleicht das nicht aus) */ im.referrerPolicy = 'no-referrer'; if (IMGFB.has(r.img.src)) im.src = IMGFB.get(r.img.src); im.onerror = () => imgFallback(im, r.img.src); return im; }
   const s = mk('span', '', vis(r.t)); if (r.s0 != null) s.dataset.s0 = r.s0; const c = neutral(r.c) ? null : shown(r.c);
   if (c) s.style.color = c; if (r.i) s.style.fontStyle = 'italic'; if (r.b) s.style.fontWeight = '700';
   const dec = [r.u && 'underline', r.s && 'line-through'].filter(Boolean).join(' '); if (dec) s.style.textDecoration = dec;
@@ -990,12 +990,21 @@ function paraEl(p, idx) {
   decorate(el, p);
   return trimNl(el);
 }
-function anchor() {                                        // welcher Absatz steht gerade auf der Lesehöhe (ein Drittel unter dem Kopf)? Der bleibt bei Umbauten stehen
+function anchor(lite) {                                        // welcher Absatz steht gerade auf der Lesehöhe (ein Drittel unter dem Kopf)? Der bleibt bei Umbauten stehen
   if (SP.on) return null;                                  // Doppelseite: die Seite merkt sich SP.ak
   const top = Math.max(0, $('hdr').getBoundingClientRect().bottom) + 4, line = top + Math.max(0, innerHeight - top) * .3;
-  let first = null;
-  for (const e of document.querySelectorAll('#main [data-k]')) { const r = e.getBoundingClientRect(); if (!r.height) continue; if (!first && r.bottom > top) first = { k: e.dataset.k, y: r.top }; if (r.bottom > line) return { k: e.dataset.k, y: r.top }; }
-  return first;
+  const els = [...document.querySelectorAll('#main [data-k]')]; let first = -1, at = -1;
+  for (let i = 0; i < els.length; i++) { const r = els[i].getBoundingClientRect(); if (!r.height) continue; if (first < 0 && r.bottom > top) first = i; if (r.bottom > line) { at = i; break; } }
+  if (at < 0) at = first; if (at < 0) return null; if (lite) return { k: els[at].dataset.k, y: els[at].getBoundingClientRect().top };
+  // Ersatz, falls genau dieser Absatz gestrichen wird: die nächsten danach, dann die davor – jeweils mit ihrer Höhe auf dem Bildschirm
+  const alt = [], add = i => { const e = els[i], r = e && e.getBoundingClientRect(); if (r && r.height) alt.push({ k: e.dataset.k, y: r.top }); };
+  for (let i = at + 1; i < Math.min(els.length, at + 60); i++) add(i); for (let i = at - 1; i >= Math.max(0, at - 30); i--) add(i);
+  return { k: els[at].dataset.k, y: els[at].getBoundingClientRect().top, alt };
+}
+function anchorEl(a) {                                     // der gemerkte Absatz – oder, wenn er weg ist, sein nächster erhaltener Nachbar
+  if (!a) return null; const m = new Map(); for (const e of document.querySelectorAll('#main [data-k]')) if (!m.has(e.dataset.k)) m.set(e.dataset.k, e);
+  for (const c of [a, ...(a.alt || [])]) { const e = m.get(c.k); if (e && e.getBoundingClientRect().height) return { e, y: c.y }; }
+  return null;
 }
 function renderDoc(keep) {
   const a = keep ? anchor() : null, main = $('main'); main.textContent = '';
@@ -1003,7 +1012,7 @@ function renderDoc(keep) {
   S.paras.forEach((p, i) => { const e = paraEl(p, i); if (e) { sheet.append(e); n++; } });
   if (!n) sheet.append(mk('p', '', 'Alles ausgeblendet. Tippe oben auf ein Gewerk, um es wieder zu zeigen.'));
   main.append(sheet);
-  if (a) { const e = [...main.querySelectorAll('[data-k]')].find(x => x.dataset.k === a.k); if (e) scrollByFree(e.getBoundingClientRect().top - a.y); }
+  keepAt(a);
   const sc = $('scenes'), heads = S.paras.filter(p => (p.head && /^HEADING_[12]/.test(p.named)) || p.scn);
   sc.textContent = ''; sc.append(new Option('Szene …', '')); heads.forEach(h => sc.append(new Option(h.text.replace(/\t+/g, ' ').slice(0, 60), h.key))); fitScenes();
   sc.hidden = !heads.length;
@@ -1888,7 +1897,7 @@ function scrollByFree(dy) {                                 // auch bei offenem 
   if (!dy || SP.on) return; HDR.hold = Date.now() + 700; const de = document.documentElement, lock = de.classList.contains('dlg-open');
   if (lock) de.classList.remove('dlg-open'); window.scrollBy(0, dy); if (lock) de.classList.add('dlg-open');
 }
-function keepAt(a) { if (!a) return; const e = [...document.querySelectorAll('#main [data-k]')].find(x => x.dataset.k === a.k); if (e) scrollByFree(e.getBoundingClientRect().top - a.y); }
+function keepAt(a) { const f = anchorEl(a); if (f) scrollByFree(f.e.getBoundingClientRect().top - f.y); }
 $('scenes').onchange = () => { const k = $('scenes').value; $('scenes').value = ''; const e = [...document.querySelectorAll('#main [data-k]')].find(x => x.dataset.k === k); if (e) e.scrollIntoView({ block: 'start' }); };
 $('close').onclick = () => switchDialog();
 $('docname').onclick = () => switchDialog();
@@ -2797,7 +2806,7 @@ function pgDraw1() {
   if (!on || !kids.length) { kids.forEach(clear); delete sh.dataset.pg1; delete sh.dataset.pglast; return; }
   if (!PG.ro) {
     PG.ro = new ResizeObserver(() => { const w = Math.round(PG.sh?.getBoundingClientRect().width || 0); if (PG.w && w !== PG.w && PG.anc) keepAt(PG.anc); PG.w = w; pgLater(150); });   // Breite geändert (Drehen, Naht): sofort zurück an die Lesestelle
-    addEventListener('scroll', () => { if (PG.sh && Math.round(PG.sh.getBoundingClientRect().width) === PG.w) PG.anc = anchor(); }, { passive: true });   // Lesestelle laufend merken
+    addEventListener('scroll', () => { if (PG.sh && Math.round(PG.sh.getBoundingClientRect().width) === PG.w) PG.anc = anchor(true); }, { passive: true });   // Lesestelle laufend merken
     $('main').addEventListener('click', pgBreakTap, true);
   }
   if (!PG.mo) PG.mo = new MutationObserver(list => { if (list.some(m => (m.target.nodeType === 1 && m.target.closest('.dp-ink,.dp-tag,.dp-tm')) || [...m.addedNodes, ...m.removedNodes].some(n => n.nodeType === 1 && n.matches?.('.dp-ink,.dp-tag,.dp-tm')))) pgLater(350); });   // Notizen von Doppelpult: nach dem Absetzen neu umbrechen
@@ -2955,7 +2964,7 @@ async function exportViewPdf() {
   } catch (e) { toast('PDF: ' + (e.message || 'ging nicht'), 6000); }
 }
 /* ---------- Live selbst aktualisieren (allein; in Doppelpult macht das Doppelpult) ---------- */
-const APPV = 132;                                           // bei jeder neuen Version hochzählen
+const APPV = 133;                                           // bei jeder neuen Version hochzählen
 async function appFresh() { try { const r = await fetch(location.pathname + '?v=' + Date.now(), { cache: 'no-store' }); const m = /const APPV = (\d+);/.exec(await r.text()); return m ? +m[1] : 0; } catch (e) { return 0; } }
 async function appRenew() {
   if (!(await netOk())) { toast('Ohne Netz lässt sich Live nicht aktualisieren.', 4000); return; }
@@ -3465,7 +3474,7 @@ const DEMO = (() => {
   return { reset, fetch: fetchMock, step, _text: textAt };
 })();
 window.LFAPI = { S, getJson, DOCS, DRIVE, toast, mk, $, store, FOL, folShare, refresh, shown, neutral, colorOf, hex2rgb, rgb2hex };   // für den Regie-Modus (regie.js)
-window.LIVEFASSUNG = { pgLater, SP, setSpread, spStep, spGo, spShowEl, spCol, spGeo, gToken, SRV, srvRefresh, regionImage, regieOpen, setView,  snapPdf, S, DEMO, refresh, parse, classify, markScenes, roleAliases, analyze, FOL, PG, pgFromPdf, pgDraw, viewPdf, gpdfImages, gpdfCrop, openDoc, openGoogle, OFF, P: () => P() };
+window.LIVEFASSUNG = { applySoon, anchor, pgLater, SP, setSpread, spStep, spGo, spShowEl, spCol, spGeo, gToken, SRV, srvRefresh, regionImage, regieOpen, setView,  snapPdf, S, DEMO, refresh, parse, classify, markScenes, roleAliases, analyze, FOL, PG, pgFromPdf, pgDraw, viewPdf, gpdfImages, gpdfCrop, openDoc, openGoogle, OFF, P: () => P() };
 
 /* ---------- Start ---------- */
 setPaper(paper); setFs(fs); applyFont(store.get('font', '')); startScreen();

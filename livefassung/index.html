@@ -94,6 +94,25 @@ body.dusk .sheet img,body.night .sheet img{opacity:.88}
 .bar .q{max-width:38vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--mute);font-size:14px;padding:0 6px}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:max(84px,calc(env(safe-area-inset-bottom) + 76px));z-index:40;background:#1D2129;color:#fff;border-radius:10px;padding:10px 14px;display:flex;gap:12px;align-items:center;box-shadow:0 6px 24px rgba(0,0,0,.25);max-width:calc(100vw - 24px)}
 .toast button{background:none;border:0;color:#FFB54D;font-weight:700;cursor:pointer;padding:4px}
+/* Änderungen erst ansehen: Leiste unten, alter Text bleibt stehen */
+.rvbar{position:fixed;left:50%;transform:translateX(-50%);bottom:max(18px,calc(env(safe-area-inset-bottom) + 10px));z-index:41;background:#1D2129;color:#fff;border-radius:12px;padding:8px 8px 8px 14px;display:flex;gap:6px;align-items:center;box-shadow:0 6px 24px rgba(0,0,0,.3);max-width:calc(100vw - 24px);font:600 15px/1.2 var(--ui,system-ui);flex-wrap:wrap;justify-content:center}
+.rvbar[hidden]{display:none}
+.rvbar .rv-l{display:none}
+@media (min-width:700px){.rvbar .rv-l{display:inline}.rvbar .rv-s{display:none}.rvbar #rv-t{white-space:nowrap}}
+.rvbar #rv-t{margin-right:6px}
+.rvbar button{font:inherit;border:0;border-radius:8px;padding:8px 12px;cursor:pointer;background:rgba(255,255,255,.12);color:#fff;min-height:38px}
+.rvbar button.pri{background:#2E9D5B}
+.rvbar .rv-nav{display:inline-flex;align-items:center;gap:2px}
+.rvbar .rv-nav button{padding:8px 11px}
+.rvbar #rv-n{min-width:3.4em;text-align:center;font-variant-numeric:tabular-nums}
+#main .rv-del{background:rgba(214,48,49,.09);box-shadow:inset 3px 0 0 #D63031;text-decoration:line-through;text-decoration-color:rgba(214,48,49,.85);text-decoration-thickness:2px}
+#main .rv-del *{text-decoration:inherit}
+#main .rv-new{background:rgba(46,157,91,.11);box-shadow:inset 3px 0 0 #2E9D5B;pointer-events:none;position:relative}
+#main .rv-new::before{content:'neu';position:absolute;right:4px;top:2px;font:700 10px/1 var(--ui,system-ui);color:#2E9D5B;letter-spacing:.04em;text-transform:uppercase}
+#main .rv-del::before{content:'gestrichen';position:absolute;right:4px;top:2px;font:700 10px/1 var(--ui,system-ui);color:#D63031;letter-spacing:.04em;text-transform:uppercase;text-decoration:none}
+#main .rv-del{position:relative}
+#main .rv-cur{outline:2px solid #E8B400;outline-offset:2px}
+.dp-ink.rv{outline:2px dashed #E8B400;outline-offset:1px;background:rgba(255,200,0,.13);border-radius:4px}
 .jump{position:fixed;right:16px;bottom:max(16px,env(safe-area-inset-bottom));z-index:29}
 @media (pointer:coarse){#add-dlg{margin-top:8px;margin-bottom:auto}}   /* iPad: oben, damit die Tastatur das Textfeld nicht verdeckt */
 #add-dlg[open]{max-height:calc(100dvh - var(--kbb,0px) - 16px);overflow:auto;overscroll-behavior:contain}
@@ -579,6 +598,7 @@ body.embed #close .ic{display:block;width:18px;height:18px}
 <div id="minimap" hidden aria-label="Miniatur der ganzen Fassung – ziehen zum Scrollen"><div class="mm-size"><div class="mm-in"></div><div class="mm-view"></div></div></div><button id="mm-x" type="button" hidden aria-label="Miniatur schließen" title="Miniatur schließen">×</button>
 <div id="print"></div>
 <dialog id="tool-dlg"><div class="tp-head"><h2 id="tp-h"></h2><button class="btn" id="tp-print" type="button">Drucken / PDF</button><button class="btn" id="tp-csv" type="button">Tabelle</button><button class="btn" id="tp-x" type="button" aria-label="Schließen">✕</button></div><div id="tp-body"></div></dialog>
+<div class="rvbar" id="rvbar" hidden role="status"><span id="rv-t"></span><span class="rv-nav" id="rv-nav" hidden><button type="button" id="rv-prev" aria-label="Vorige Änderung">‹</button><span id="rv-n"></span><button type="button" id="rv-next" aria-label="Nächste Änderung">›</button></span><button type="button" id="rv-show">Ansehen</button><button type="button" class="pri" id="rv-ok">Übernehmen</button></div>
 <div class="toast" id="toast" hidden><span id="toast-t"></span><button id="toast-b" type="button" hidden></button></div>
 
 <dialog id="add-dlg"><form class="dlg" method="dialog" id="add-form">
@@ -1432,7 +1452,7 @@ async function refresh(force) {
     // schnelle Abfrage: nur die Versionsnummer des Docs (Datei-Eigenschaften wie „Folgen“ zählen dort nicht als Änderung)
     if (!force && S.rev && S.mode !== 'demo' && Date.now() - (S.metaT || 0) < 60000 && !(S.json && (S.json.inlineObjects || S.json.positionedObjects) && Date.now() - (S.jsonT || 0) > 20 * 60e3)) {
       const q = await getJson(DOCS + encodeURIComponent(S.id) + '?fields=revisionId');
-      if (q.revisionId === S.rev) { const was = S.offT; S.lastOk = Date.now(); S.offT = 0; live('on'); if (was) offSave(); return; }
+      if (q.revisionId === S.rev || (S.pendRev && q.revisionId === S.pendRev)) { const was = S.offT; S.lastOk = Date.now(); S.offT = 0; live('on'); if (was) offSave(); return; }
       const doc = await getJson(DOCS + encodeURIComponent(S.id)); S.jsonT = Date.now(); applySoon(doc); S.lastOk = Date.now(); S.offT = 0; live('on'); return;
     }
     const meta = await getJson(DRIVE + encodeURIComponent(S.id) + '?fields=version,name,capabilities/canEdit&supportsAllDrives=true'); S.metaT = Date.now();
@@ -1442,8 +1462,9 @@ async function refresh(force) {
     // Die Datei-Version steigt auch, wenn nur „Folgen“ oder Regie-Anwesenheit (Datei-Eigenschaften) geschrieben werden –
     // dann nicht die ganze Fassung neu holen und neu aufbauen (das ließ Live jede Minute kurz hängen), nur bei echtem neuen Text
     let chg = force || (S.rev == null && meta.version !== S.ver);
-    if (!chg && (stale || meta.version !== S.ver)) { const q = await getJson(DOCS + encodeURIComponent(S.id) + '?fields=revisionId'); chg = q.revisionId !== S.rev; if (!chg) S.ver = meta.version; }
+    if (!chg && (stale || meta.version !== S.ver)) { const q = await getJson(DOCS + encodeURIComponent(S.id) + '?fields=revisionId'); chg = q.revisionId !== S.rev && q.revisionId !== S.pendRev; if (!chg) S.ver = meta.version; }
     if (chg) { const doc = await getJson(DOCS + encodeURIComponent(S.id)); S.ver = meta.version; S.jsonT = Date.now(); if (force) apply(doc); else applySoon(doc); }
+    else if (S.pendRev && !RV.pend) S.pendRev = null;
     else if (stale) { const doc = await getJson(DOCS + encodeURIComponent(S.id)); S.jsonT = Date.now(); if (doc.revisionId === S.rev) imgRefresh(doc); else applySoon(doc); }   // nur neue Bild-Adressen: still, ohne Neuaufbau
     S.lastOk = Date.now(); S.offT = 0; live('on'); offSave();
   } catch (e) {
@@ -1465,7 +1486,81 @@ async function refresh(force) {
 const ACT = { t: 0 };
 ['pointerdown', 'touchmove', 'wheel', 'keydown'].forEach(ev => addEventListener(ev, () => { ACT.t = Date.now(); }, { passive: true, capture: true }));
 const busyNow = () => Date.now() - Math.max(ACT.t, window.__dpAct || 0) < 1500 || Date.now() - (window.__dpPenT || 0) < 2500;
+/* ---------- Änderungen erst ansehen, dann übernehmen ----------
+   Kommen Änderungen anderer an, bleibt der bisherige Text stehen: gestrichene Stellen rot, neue grün eingeblendet (ohne Schlüssel –
+   Notizen hängen weiter am alten Text und lassen sich noch verschieben). Erst „Übernehmen“ baut um. Eigene Änderungen gehen sofort durch. */
+const RV = { pend: null, show: false, i: -1, list: [] };
+const rvOn = () => store.get('review', true) !== false;
+const rvItems = l => { const o = []; l.forEach(p => o.push({ p, k: p.kind === 'table' ? 'T\u0002' + tableKeys(p).join('\u0002') : p.key })); return o; };
+function tableKeys(t) { const ks = []; const look = l => l.forEach(q => (q.kind === 'table' ? q.rows.forEach(r => r.forEach(look)) : ks.push(q.key))); t.rows.forEach(r => r.forEach(look)); return ks; }
+const rvVis = p => (p.kind === 'table' ? true : !p.legend && p.runs.some(r => visible(r.cat) && (r.img || (r.t && tr(r.t)))));
+function rvDiff(a, b) {                                     // welche alten Einträge fallen weg, welche neuen kommen dazu (gemeinsame Folge bleibt)
+  let s0 = 0; while (s0 < a.length && s0 < b.length && a[s0].k === b[s0].k) s0++;
+  let e = 0; while (e < a.length - s0 && e < b.length - s0 && a[a.length - 1 - e].k === b[b.length - 1 - e].k) e++;
+  const A = a.slice(s0, a.length - e), B = b.slice(s0, b.length - e), keepA = new Set(), mapB = new Map();
+  if (A.length * B.length <= 4e6) {
+    const n = A.length, m = B.length, L = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
+    for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) L[i][j] = A[i].k === B[j].k ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+    let i = 0, j = 0; while (i < n && j < m) { if (A[i].k === B[j].k) { keepA.add(i); mapB.set(j, i); i++; j++; } else if (L[i + 1][j] >= L[i][j + 1]) i++; else j++; }
+  }
+  const del = A.filter((x, i) => !keepA.has(i)).map(x => x.p);
+  const ins = []; let anchor = s0 - 1;                     // neuer Eintrag kommt hinter den letzten erhaltenen alten
+  B.forEach((x, j) => { if (mapB.has(j)) anchor = s0 + mapB.get(j); else ins.push({ p: x.p, after: anchor >= 0 ? a[anchor].p : null }); });
+  return { del, ins };
+}
+function rvHold(doc) {                                      // true: zurückhalten und zum Ansehen anbieten
+  if (!rvOn() || S.first || !S.paras.length || Date.now() < (S.quietUntil || 0) || (doc.documentId && S.id && doc.documentId !== S.id)) { if (RV.pend) rvDrop(); return false; }
+  let paras; try { paras = parse(doc); } catch (e) { return false; }
+  const d = rvDiff(rvItems(S.paras), rvItems(paras)), del = d.del.filter(rvVis), ins = d.ins.filter(x => rvVis(x.p));
+  if (!del.length && !ins.length) { if (RV.pend) rvDrop(); return false; }   // nichts Sichtbares: still übernehmen
+  const wasShow = RV.show; if (RV.show) rvGhosts(false);
+  RV.pend = { doc, paras, del, ins }; S.pendRev = doc.revisionId; RV.i = -1;
+  const n = rvCount(); $('rv-t').innerHTML = '<span class="rv-l">Fassung geändert · </span>' + (n === 1 ? '1 Stelle' : n + ' Stellen') + '<span class="rv-s"> geändert</span>';
+  $('rvbar').hidden = false; if (wasShow) rvGhosts(true); else rvSyncBar();
+  return true;
+}
+function rvCount() {                                       // zusammenhängende Änderungen (gestrichen und neu an einer Stelle) zählen einmal
+  const P0 = RV.pend; if (!P0) return 0; const ix = new Map(S.paras.map((p, i) => [p, i])), at = [];
+  P0.del.forEach(p => at.push(ix.get(p) ?? 0)); P0.ins.forEach(x => at.push(x.after ? (ix.get(x.after) ?? 0) + .5 : -.5));
+  at.sort((a, b) => a - b); let n = 0; at.forEach((v, i) => { if (!i || v - at[i - 1] > 1) n++; }); return n;
+}
+function rvSyncBar() { $('rv-show').textContent = RV.show ? 'Ausblenden' : 'Ansehen'; $('rv-nav').hidden = !RV.show || !RV.list.length; if (RV.show && RV.list.length) $('rv-n').textContent = (RV.i + 1 > 0 ? RV.i + 1 : '–') + ' / ' + RV.list.length; }
+function rvElOf(p) { if (!p) return null; const k = p.kind === 'table' ? tableKeys(p)[0] : p.key; const e = [...document.querySelectorAll('#main [data-k]')].find(x => x.dataset.k === k); return e && (p.kind === 'table' ? e.closest('table') || e : e); }
+function rvGhosts(on) {                                     // Markierungen im alten Text an/aus – die Lesestelle bleibt stehen
+  const a = anchor(); RV.show = on; RV.list = [];
+  document.querySelectorAll('#main .rv-new').forEach(e => e.remove()); document.querySelectorAll('#main .rv-del,#main .rv-cur').forEach(e => e.classList.remove('rv-del', 'rv-cur'));
+  const delK = new Set();
+  if (on && RV.pend) {
+    const sheet = document.querySelector('#main .sheet'), seen = new Set();
+    for (const p of RV.pend.del) { const e = rvElOf(p); if (e) { e.classList.add('rv-del'); (p.kind === 'table' ? tableKeys(p) : [p.key]).forEach(k => delK.add(k)); } }
+    const last = new Map();                                // mehrere neue hinter derselben Stelle in ihrer Reihenfolge
+    for (const x of RV.pend.ins) {
+      const g = paraEl(x.p, -1); if (!g) continue;
+      g.classList.add('rv-new'); g.dataset.rv = '1'; g.removeAttribute('data-k'); g.querySelectorAll('[data-k]').forEach(c => c.removeAttribute('data-k')); g.querySelectorAll('[data-s0]').forEach(c => c.removeAttribute('data-s0'));
+      let ref = last.get(x.after) || rvElOf(x.after);
+      if (!ref && x.after) { let i = S.paras.indexOf(x.after); while (!ref && --i >= 0) ref = rvElOf(S.paras[i]); }   // Vorgänger ausgeblendet: davor suchen
+      if (!last.has(x.after)) { let nx = ref ? ref.nextElementSibling : sheet?.firstElementChild; if (!ref && nx?.classList.contains('rv-del')) { ref = nx; nx = ref.nextElementSibling; } while (nx?.classList.contains('rv-del')) { ref = nx; nx = nx.nextElementSibling; } }   // erst das Alte (gestrichen), dann das Neue
+      if (ref) ref.after(g); else if (sheet) sheet.prepend(g);
+      last.set(x.after, g);
+    }
+    const all = [...document.querySelectorAll('#main .rv-del, #main .rv-new')].filter(e => e.closest('.rv-del,.rv-new') === e);
+    RV.list = all.filter((e, i) => !(i && all[i - 1].nextElementSibling === e));   // direkt aufeinanderfolgende Änderungen sind eine Stelle
+  }
+  S.rvDel = delK; keepAt(a); pgDraw(); rvSyncBar();
+  try { parent !== window && parent.postMessage({ dp: 'rv' }, location.origin); } catch (e) {}
+}
+function rvGo(dir) {
+  if (!RV.list.length) return; RV.i = (RV.i + dir + RV.list.length) % RV.list.length;
+  document.querySelectorAll('#main .rv-cur').forEach(e => e.classList.remove('rv-cur')); const e = RV.list[RV.i]; e.classList.add('rv-cur');
+  const top = Math.max(0, $('hdr').getBoundingClientRect().bottom), r = e.getBoundingClientRect();
+  if (SP.on) { const k = (e.closest('[data-k]') || e.previousElementSibling?.closest?.('[data-k]'))?.dataset?.k; if (k) spShowKey(k); }
+  else scrollByFree(r.top - top - Math.max(60, (innerHeight - top) * .25));
+  rvSyncBar();
+}
+function rvDrop() { const was = RV.show; RV.pend = null; S.pendRev = null; S.rvDel = new Set(); $('rvbar').hidden = true; if (was) rvGhosts(false); RV.show = false; RV.list = []; }
+function rvAccept() { const P0 = RV.pend; if (!P0) return; const d = P0.doc; if (RV.show) rvGhosts(false); RV.pend = null; S.pendRev = null; $('rvbar').hidden = true; RV.show = false; S.rvDel = new Set(); apply(d); offSave(); }
 function applySoon(doc) {
+  if (rvHold(doc)) return;
   if (S.first || !busyNow()) { clearTimeout(S.apT); S.apDoc = null; S.apT0 = 0; apply(doc); offSave(); return; }
   S.apDoc = doc; S.rev = doc.revisionId; if (!S.apT0) S.apT0 = Date.now(); clearTimeout(S.apT);   // schon als bekannt merken: nicht alle 3 s erneut holen
   const go = () => {
@@ -1486,7 +1581,9 @@ function imgRefresh(doc) {                                  // Google erneuert d
 function kbSet(px) { px = Math.max(0, Math.round(px || 0)); document.documentElement.style.setProperty('--kbb', px + 'px'); const t = document.activeElement; if (px && t?.closest?.('dialog[open]') && /TEXTAREA|INPUT/.test(t.tagName)) setTimeout(() => { try { t.scrollIntoView({ block: 'nearest' }); } catch (e) {} }, 30); }
 if (window.visualViewport && !EMBED_Q) visualViewport.addEventListener('resize', () => kbSet(innerHeight - visualViewport.height - visualViewport.offsetTop));
 addEventListener('message', e => { if (e.origin === location.origin && e.data?.dp === 'kb') kbSet(e.data.px); });
+$('rv-show').onclick = () => rvGhosts(!RV.show); $('rv-ok').onclick = rvAccept; $('rv-prev').onclick = () => rvGo(-1); $('rv-next').onclick = () => rvGo(1);
 function apply(doc) {
+  if (RV.pend && RV.pend.doc !== doc) { if (RV.show) rvGhosts(false); RV.pend = null; S.pendRev = null; $('rvbar').hidden = true; RV.show = false; S.rvDel = new Set(); }   // neuerer Stand ersetzt das Zurückgehaltene
   const old = new Set(), collect = l => l.forEach(p => p.kind === 'table' ? p.rows.forEach(r => r.forEach(collect)) : old.add(p.key)); collect(S.paras);
   const paras = parse(doc), { legend, cats } = classify(paras);
   S.json = doc; S.rev = doc.revisionId; S.paras = paras; S.legend = legend; S.cats = cats; markScenes(paras); analyze();
@@ -1794,6 +1891,7 @@ function blockReqs(b, txt, st) {                           // unter einem Block 
 }
 async function batch(reqs) { return getJson(DOCS + encodeURIComponent(S.id) + ':batchUpdate', { method: 'POST', body: JSON.stringify({ requests: reqs, writeControl: { requiredRevisionId: S.rev } }) }); }
 async function write(find, reqs) {                         // schreiben; hat gerade jemand anderes geschrieben: neu laden, Stelle wiederfinden, bis zu drei Versuche
+  if (RV.pend) rvAccept();                                 // wer selbst schreibt, übernimmt vorher die zurückgehaltenen Änderungen – sonst passen die Stellen nicht
   for (let k = 0; ; k++) {
     const p = find(); if (!p) throw new Error(k ? 'Die Stelle wurde gerade geändert. Bitte noch einmal wählen.' : 'Stelle nicht mehr gefunden');
     try { const res = await batch(reqs(p)); S.quietUntil = Date.now() + 2500; return res; }
@@ -2802,7 +2900,7 @@ function pgDraw0() { spPre(); try { pgDraw1(); } finally { spPost(); } }
 function pgDraw1() {
   const sh = $('main').querySelector('.sheet'); if (!sh) return;
   const on = pgOn(); document.body.classList.toggle('pgview', on);
-  const kids = [...sh.children].filter(e => e.matches('[data-k],table'));
+  const kids = [...sh.children].filter(e => e.matches('[data-k],table,[data-rv]'));
   const clear = e => { e.classList.remove('pgstart', 'pgsub', 'pbx'); delete e.dataset.pg; delete e.dataset.pgn; delete e.dataset.ng; e.style.removeProperty('--pgpad'); e.style.removeProperty('--pgtop'); delete e.dataset.need; };
   if (!on || !kids.length) { kids.forEach(clear); delete sh.dataset.pg1; delete sh.dataset.pglast; return; }
   if (!PG.ro) {
@@ -2965,7 +3063,7 @@ async function exportViewPdf() {
   } catch (e) { toast('PDF: ' + (e.message || 'ging nicht'), 6000); }
 }
 /* ---------- Live selbst aktualisieren (allein; in Doppelpult macht das Doppelpult) ---------- */
-const APPV = 133;                                           // bei jeder neuen Version hochzählen
+const APPV = 134;                                           // bei jeder neuen Version hochzählen
 async function appFresh() { try { const r = await fetch(location.pathname + '?v=' + Date.now(), { cache: 'no-store' }); const m = /const APPV = (\d+);/.exec(await r.text()); return m ? +m[1] : 0; } catch (e) { return 0; } }
 async function appRenew() {
   if (!(await netOk())) { toast('Ohne Netz lässt sich Live nicht aktualisieren.', 4000); return; }
@@ -3054,6 +3152,10 @@ function showMenu() {
       b.append(mk('p', 'fine', 'A4-Seiten genau wie im PDF-Export: neue Seite, wenn die Seite voll ist oder an einem Umbruch aus dem Doc. Ein Absatz kommt mit seinen Notizen und Marken immer ganz auf eine Seite; die Seitenzahlen sind die von Live.'));
       b.append(mk('p', 'fine', '„Vor Abschnitten“: ein Umbruch aus dem Doc gilt nur vor einer Überschrift, einem Akt, einer Szene, einem Zwischenspiel, Finale o. Ä.; die übrigen zeigt Live als gestrichelte Linie. Antippen von Seitenstreifen oder Linie legt es für diese Stelle fest. „Kürzen“ spart nur in der Anzeige Leerraum – Seiten und PDF bleiben gleich.'));
     } else b.append(mk('p', 'fine', 'Teilt die Fassung in A4-Seiten wie im PDF-Export – z. B. für „wir machen ab Seite 34“.'));
+    b.append(mk('h3', 'sc', 'Änderungen anderer'));
+    { const r = mk('div', 'acts lbl'), o = mk('div', 'opts'); r.append(mk('span', 'fine', 'Neue Stände'), o);
+      [['erst ansehen, dann übernehmen', true], ['sofort übernehmen', false]].forEach(([t, v]) => { const x = mk('button', 'btn' + (rvOn() === v ? ' pri' : ''), t); x.type = 'button'; x.onclick = () => { store.set('review', v); if (!v && RV.pend) rvAccept(); showMenu(); }; o.append(x); });
+      b.append(r); b.append(mk('p', 'fine', 'Ändert jemand die Fassung, bleibt dein Text zunächst stehen. Unten erscheint „Fassung geändert“: „Ansehen“ zeigt gestrichene Stellen rot und neue grün, „Übernehmen“ baut um. So kannst du vorher Notizen verschieben. Eigene Änderungen gelten immer sofort.')); }
     if (S.mode === 'google' && S.id) { b.append(mk('h3', 'sc', 'Teilen'));
       const r = mk('div', 'acts left'), t = mk('button', 'btn', 'Link und Einladungen …'); t.type = 'button'; t.onclick = shareDialog; r.append(t, mk('span', 'fine', 'Andere in die Fassung einladen – lesen, kommentieren oder mitschreiben.')); b.append(r); }
     if (!EMBED) { b.append(mk('h3', 'sc', 'App'));                                          // Live aktualisieren

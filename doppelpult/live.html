@@ -1408,6 +1408,15 @@ async function openGoogle(doc) {
     store.set('last', doc); await openDoc(doc.id, doc.name);
   } catch (e) { S.mode = prevMode; toast(e.login ? 'Bitte bei Google anmelden.' : 'Google: ' + e.message, 6000, 'Zugang ändern', cfgDialog); }
 }
+// Lesestelle über das Schließen hinaus: iPadOS beendet Apps im Hintergrund oft still – beim Wiederöffnen ging es dann von vorn los
+let posT = 0;
+function posSave() { try { if (!S.id || S.first) return; const a = SP.on ? (SP.ak ? { k: SP.ak, y: 0 } : null) : anchor(true); if (a) store.set('pos-' + S.id, { k: a.k, y: Math.round(a.y), t: Date.now() }); } catch (e) {} }
+function posSoon() { clearTimeout(posT); posT = setTimeout(posSave, 700); }
+function posRestore() {
+  const p = S.id && store.get('pos-' + S.id, null); if (!p || !p.k || Date.now() - (p.t || 0) > 48 * 3600e3) return;
+  requestAnimationFrame(() => { if (SP.on) { spShowKey(p.k); return; } keepAt({ k: p.k, y: p.y }); });
+}
+addEventListener('pagehide', posSave); document.addEventListener('visibilitychange', () => { if (document.hidden) posSave(); });
 function openDemo() { S.mode = 'demo'; DEMO.reset(); openDoc('demo', 'Die Fähre nach Morgen (Demo)'); }
 async function openDoc(id, name, cached) {
   S.id = id; S.name = name; S.rev = null; S.ver = null; S.jsonT = 0; S.first = true; S.sel = null; S.newKeys.clear(); S.mineKeys.clear();
@@ -1596,7 +1605,8 @@ function apply(doc) {
   }
   if (S.sel) { const f = findKey(S.sel.key); if (!f) clearSel(); else S.sel = f; }
   if (S.first) pgOpen(); else pgSoon();
-  renderChips(); renderDoc(!S.first); S.first = false;
+  const was1 = S.first; renderChips(); renderDoc(!S.first); S.first = false;
+  if (was1) posRestore();
   saveSnap(); updateBadge(); updateNext();
 }
 function live(st, msg) {
@@ -2665,7 +2675,7 @@ async function gpdfCrop(b) {                                // das Bild als PNG 
   } catch (e) { return null; }
 }
 async function snapPdf(opt = {}) {                          // Export immer in voller Seitenlänge – auch wenn die Anzeige gekürzt ist
-  if (!pgShort()) return snapPdf0(opt);
+  if (!pgShort()) { const a = anchor(); try { return await snapPdf0(opt); } finally { if (!SP.on) keepAt(a); } }   // Lesestelle bleibt, was auch immer beim Abbilden umgebaut wird
   const a = anchor(); PG.full = true; pgDraw(); await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
   try { return await snapPdf0(opt); }
   finally { PG.full = false; pgDraw(); if (a) { const e = [...document.querySelectorAll('#main [data-k]')].find(x => x.dataset.k === a.k); if (e) scrollByFree(e.getBoundingClientRect().top - a.y); } }
@@ -2904,7 +2914,7 @@ function pgDraw1() {
   if (!on || !kids.length) { kids.forEach(clear); delete sh.dataset.pg1; delete sh.dataset.pglast; return; }
   if (!PG.ro) {
     PG.ro = new ResizeObserver(() => { const w = Math.round(PG.sh?.getBoundingClientRect().width || 0); if (PG.w && w !== PG.w && PG.anc) keepAt(PG.anc); PG.w = w; pgLater(150); });   // Breite geändert (Drehen, Naht): sofort zurück an die Lesestelle
-    addEventListener('scroll', () => { if (PG.sh && Math.round(PG.sh.getBoundingClientRect().width) === PG.w) PG.anc = anchor(true); }, { passive: true });   // Lesestelle laufend merken
+    addEventListener('scroll', () => { if (PG.sh && Math.round(PG.sh.getBoundingClientRect().width) === PG.w) PG.anc = anchor(true); posSoon(); }, { passive: true });   // Lesestelle laufend merken
     $('main').addEventListener('click', pgBreakTap, true);
   }
   if (!PG.mo) PG.mo = new MutationObserver(list => { if (list.some(m => (m.target.nodeType === 1 && m.target.closest('.dp-ink,.dp-tag,.dp-tm')) || [...m.addedNodes, ...m.removedNodes].some(n => n.nodeType === 1 && n.matches?.('.dp-ink,.dp-tag,.dp-tm')))) pgLater(350); });   // Notizen von Doppelpult: nach dem Absetzen neu umbrechen

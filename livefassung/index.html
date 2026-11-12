@@ -355,6 +355,21 @@ main{padding:22px 14px 140px}
 .sheet .caret{background:var(--spike)}
 .sheet .segsel{outline-color:var(--spike);background:rgba(242,56,124,.12)}
 .sheet .p.mine-new{box-shadow:inset 4px 0 0 #2BB673}
+.sheet .p{transition:box-shadow .8s,background-color .8s}
+/* Änderungen anderer, noch nicht als gelesen markiert: hell hinterlegt (neu kräftiger, schon gesehen blasser) */
+.sheet .p.chg-new{background:rgba(255,196,0,.16);box-shadow:inset 3px 0 0 rgba(232,170,0,.85)}
+.sheet .p.chg-seen{background:rgba(255,196,0,.07);box-shadow:inset 3px 0 0 rgba(232,170,0,.35)}
+.chg .tag{float:right;font:700 10px/1.2 var(--ui,system-ui);text-transform:uppercase;letter-spacing:.04em;padding:2px 6px;border-radius:6px;background:#E8AA00;color:#1D2129;margin-left:6px}
+.chg .tag.seen{background:var(--line);color:var(--mute)}
+.chg .kind{font-size:12px;color:#B98600;font-weight:600;margin-bottom:2px}
+.chg .same{white-space:pre-wrap}
+#main .rv-mov,#main .rv-fmt{position:relative}
+#main .rv-fmt{background:rgba(255,196,0,.16);box-shadow:inset 3px 0 0 #E8AA00}
+#main .rv-fmt::before{content:'Gewerk/Format';position:absolute;right:4px;top:2px;font:700 10px/1 var(--ui,system-ui);letter-spacing:.04em;text-transform:uppercase;color:#B98600}
+#main .rv-new.rv-movnew{background:rgba(70,120,230,.10);box-shadow:inset 3px 0 0 #4678E6}
+#main .rv-new.rv-movnew::before{content:'hierher verschoben';color:#4678E6}
+#main .rv-del.rv-movdel{text-decoration:none;background:rgba(70,120,230,.06);box-shadow:inset 3px 0 0 rgba(70,120,230,.5)}
+#main .rv-del.rv-movdel::before{content:'wird verschoben';color:#4678E6}
 @keyframes flash{0%,35%{background:rgba(255,194,26,.5)}100%{background:transparent}}
 /* Leiste unten: dunkle Pille, Hauptaktion als Klebeband */
 .bar{background:var(--head);color:var(--head-ink);border:0;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
@@ -1006,7 +1021,10 @@ function paraEl(p, idx) {
     }
     el.append(say);
   } else runs.forEach(r => el.append(runSpan(r, plan)));
-  if (S.newKeys.has(p.key)) el.classList.add('new'); if (S.mineKeys.has(p.key)) el.classList.add('mine-new');
+  if (S.newKeys.has(p.key)) el.classList.add('new');
+  if (S.mineKeys.has(p.key)) { const m = (P()?.mine || []).find(x => x.t === p.text && sameColor(p, x.c)), left = m?.at ? 20000 - (Date.now() - m.at) : 0;   // eigener Eintrag: grüner Balken nur kurz, dann stört er den Lesefluss nicht
+    if (left > 0) { el.classList.add('mine-new'); setTimeout(() => el.classList.remove('mine-new'), left); } }
+  { const h = S.chgHi?.get(p.key); if (h) el.classList.add(h === 'seen' ? 'chg-seen' : 'chg-new'); }   // Änderung anderer, noch nicht gelesen
   if (S.sel && S.sel.key === p.key) el.classList.add('sel');
   decorate(el, p);
   return trimNl(el);
@@ -1521,9 +1539,11 @@ function rvHold(doc) {                                      // true: zurückhalt
   if (!rvOn() || S.first || !S.paras.length || Date.now() < (S.quietUntil || 0) || (doc.documentId && S.id && doc.documentId !== S.id)) { if (RV.pend) rvDrop(); return false; }
   let paras; try { paras = parse(doc); } catch (e) { return false; }
   const d = rvDiff(rvItems(S.paras), rvItems(paras)), del = d.del.filter(rvVis), ins = d.ins.filter(x => rvVis(x.p));
-  if (!del.length && !ins.length) { if (RV.pend) rvDrop(); return false; }   // nichts Sichtbares: still übernehmen
+  const oldM = new Map(S.paras.filter(p => p.kind !== 'table').map(p => [p.key, p])), insK = new Set(ins.map(x => x.p.key));
+  const fmt = paras.filter(p => p.kind !== 'table' && rvVis(p) && !insK.has(p.key) && oldM.has(p.key) && fmtSig(oldM.get(p.key)) !== fmtSig(p)).map(p => p.key);   // nur Gewerk oder Format anders
+  if (!del.length && !ins.length && !fmt.length) { if (RV.pend) rvDrop(); return false; }   // nichts Sichtbares: still übernehmen
   const wasShow = RV.show; if (RV.show) rvGhosts(false);
-  RV.pend = { doc, paras, del, ins }; S.pendRev = doc.revisionId; RV.i = -1;
+  RV.pend = { doc, paras, del, ins, fmt }; S.pendRev = doc.revisionId; RV.i = -1;
   const n = rvCount(); $('rv-t').innerHTML = '<span class="rv-l">Fassung geändert · </span>' + (n === 1 ? '1 Stelle' : n + ' Stellen') + '<span class="rv-s"> geändert</span>';
   $('rvbar').hidden = false; if (wasShow) rvGhosts(true); else rvSyncBar();
   return true;
@@ -1531,28 +1551,31 @@ function rvHold(doc) {                                      // true: zurückhalt
 function rvCount() {                                       // zusammenhängende Änderungen (gestrichen und neu an einer Stelle) zählen einmal
   const P0 = RV.pend; if (!P0) return 0; const ix = new Map(S.paras.map((p, i) => [p, i])), at = [];
   P0.del.forEach(p => at.push(ix.get(p) ?? 0)); P0.ins.forEach(x => at.push(x.after ? (ix.get(x.after) ?? 0) + .5 : -.5));
+  const km = new Map(S.paras.map((p, i) => [p.key, i])); (P0.fmt || []).forEach(k => at.push(km.get(k) ?? 0));
   at.sort((a, b) => a - b); let n = 0; at.forEach((v, i) => { if (!i || v - at[i - 1] > 1) n++; }); return n;
 }
 function rvSyncBar() { $('rv-show').textContent = RV.show ? 'Ausblenden' : 'Ansehen'; $('rv-nav').hidden = !RV.show || !RV.list.length; if (RV.show && RV.list.length) $('rv-n').textContent = (RV.i + 1 > 0 ? RV.i + 1 : '–') + ' / ' + RV.list.length; }
 function rvElOf(p) { if (!p) return null; const k = p.kind === 'table' ? tableKeys(p)[0] : p.key; const e = [...document.querySelectorAll('#main [data-k]')].find(x => x.dataset.k === k); return e && (p.kind === 'table' ? e.closest('table') || e : e); }
 function rvGhosts(on) {                                     // Markierungen im alten Text an/aus – die Lesestelle bleibt stehen
   const a = anchor(); RV.show = on; RV.list = [];
-  document.querySelectorAll('#main .rv-new').forEach(e => e.remove()); document.querySelectorAll('#main .rv-del,#main .rv-cur').forEach(e => e.classList.remove('rv-del', 'rv-cur'));
+  document.querySelectorAll('#main .rv-new').forEach(e => e.remove()); document.querySelectorAll('#main .rv-del,#main .rv-cur,#main .rv-fmt').forEach(e => e.classList.remove('rv-del', 'rv-cur', 'rv-fmt', 'rv-movdel'));
   const delK = new Set();
   if (on && RV.pend) {
     const sheet = document.querySelector('#main .sheet'), seen = new Set();
-    for (const p of RV.pend.del) { const e = rvElOf(p); if (e) { e.classList.add('rv-del'); (p.kind === 'table' ? tableKeys(p) : [p.key]).forEach(k => delK.add(k)); } }
+    const insKeys = new Set(RV.pend.ins.map(x => x.p.key));
+    for (const p of RV.pend.del) { const e = rvElOf(p); if (e) { e.classList.add('rv-del'); if (insKeys.has(p.key)) e.classList.add('rv-movdel'); else (p.kind === 'table' ? tableKeys(p) : [p.key]).forEach(k => delK.add(k)); } }
+    for (const k of RV.pend.fmt || []) { const e = [...document.querySelectorAll('#main [data-k]')].find(x => x.dataset.k === k); if (e) e.classList.add('rv-fmt'); }
     const last = new Map();                                // mehrere neue hinter derselben Stelle in ihrer Reihenfolge
     for (const x of RV.pend.ins) {
       const g = paraEl(x.p, -1); if (!g) continue;
-      g.classList.add('rv-new'); g.dataset.rv = '1'; g.removeAttribute('data-k'); g.querySelectorAll('[data-k]').forEach(c => c.removeAttribute('data-k')); g.querySelectorAll('[data-s0]').forEach(c => c.removeAttribute('data-s0'));
+      g.classList.add('rv-new'); g.dataset.rv = '1'; if (RV.pend.del.some(p => p.key === x.p.key)) g.classList.add('rv-movnew'); g.removeAttribute('data-k'); g.querySelectorAll('[data-k]').forEach(c => c.removeAttribute('data-k')); g.querySelectorAll('[data-s0]').forEach(c => c.removeAttribute('data-s0'));
       let ref = last.get(x.after) || rvElOf(x.after);
       if (!ref && x.after) { let i = S.paras.indexOf(x.after); while (!ref && --i >= 0) ref = rvElOf(S.paras[i]); }   // Vorgänger ausgeblendet: davor suchen
       if (!last.has(x.after)) { let nx = ref ? ref.nextElementSibling : sheet?.firstElementChild; if (!ref && nx?.classList.contains('rv-del')) { ref = nx; nx = ref.nextElementSibling; } while (nx?.classList.contains('rv-del')) { ref = nx; nx = nx.nextElementSibling; } }   // erst das Alte (gestrichen), dann das Neue
       if (ref) ref.after(g); else if (sheet) sheet.prepend(g);
       last.set(x.after, g);
     }
-    const all = [...document.querySelectorAll('#main .rv-del, #main .rv-new')].filter(e => e.closest('.rv-del,.rv-new') === e);
+    const all = [...document.querySelectorAll('#main .rv-del, #main .rv-new, #main .rv-fmt')].filter(e => e.closest('.rv-del,.rv-new,.rv-fmt') === e);
     RV.list = all.filter((e, i) => !(i && all[i - 1].nextElementSibling === e));   // direkt aufeinanderfolgende Änderungen sind eine Stelle
   }
   S.rvDel = delK; keepAt(a); pgDraw(); rvSyncBar();
@@ -1938,7 +1961,7 @@ async function replaceSeg(e, txt, st) {
       const lead = g.whole ? '' : g.text.match(/^\s*/)[0], trail = g.whole ? '' : g.text.match(/\s*$/)[0], full = lead + txt + trail;
       return [{ deleteContentRange: { range: { startIndex: g.from, endIndex: g.to } } }, { insertText: { location: { index: g.from }, text: full } }, styleReq(g.from + lead.length, txt.length, st)];
     });
-    if (e.seg.whole) { const m = P().mine.find(x => x.t === e.seg.text); if (m) forgetMine(m.t, m.c); P().mine.push({ t: txt, c: st.hex }); savePrefs(); }
+    if (e.seg.whole) { const m = P().mine.find(x => x.t === e.seg.text); if (m) forgetMine(m.t, m.c); P().mine.push({ t: txt, c: st.hex, at: Date.now() }); savePrefs(); }
     await refresh(true); clearSel(); toast('Geändert.');
   } catch (er) { err(er, 'Nicht geändert'); }
   finally { setTimeout(() => { S.expect = null; }, 1000); }
@@ -1970,7 +1993,7 @@ async function insertBelow(key, txt, st, blkText) {
     S.expect = txt; const p0 = findKey(key);
     await write(findPara(key, p0?.text), p => { const b = blkText != null && blocksOf(p).find(x => x.text === blkText); return b && b.sepTo != null ? blockReqs(b, txt, st) : insertReqs(p, txt, st); });
     const undo = { ...S.lastIns };
-    P().mine.push({ t: txt, c: st.hex }); savePrefs(); await refresh(true);
+    P().mine.push({ t: txt, c: st.hex, at: Date.now() }); savePrefs(); await refresh(true);
     clearSel(); toast('Eingefügt.', 8000, 'Rückgängig', () => { const q = S.paras.find(x => x.kind === 'p' && x.text === txt && S.mineKeys.has(x.key)); if (q) removeSegs(q, undo); });
   } catch (e) { err(e, 'Nicht eingefügt'); }
   finally { $('bar-add').disabled = false; setTimeout(() => { S.expect = null; }, 1000); }
@@ -2228,9 +2251,11 @@ function showExtracts() {
 
 /* ---------- 3. Änderungen seit dem letzten Besuch ---------- */
 const snapKey = () => 'snap-' + S.id;
-const snapshot = () => FLAT().filter(p => !p.legend && tr(p.text)).map(p => [p.key, p.text, [...new Set(p.runs.map(r => r.cat).filter(Boolean))].join(','), p.scene]);
+const fmtSig = p => p.runs.map(r => (r.img ? 'img' : (r.c || '') + (r.b ? 'b' : '') + (r.i ? 'i' : '') + (r.u ? 'u' : '') + (r.s ? 's' : ''))).join(';');
+const snapshot = () => FLAT().filter(p => !p.legend && tr(p.text)).map(p => [p.key, p.text, [...new Set(p.runs.map(r => r.cat).filter(Boolean))].join(','), p.scene, fmtSig(p)]);
 let snapT = 0;
-function saveSnap() { clearTimeout(snapT); snapT = setTimeout(() => store.set(snapKey(), { t: Date.now(), items: snapshot() }), 800); }
+// Vergleichsstand: bleibt stehen, bis alles als gelesen markiert ist – so verschwinden Änderungen nicht mehr beim nächsten Öffnen
+function saveSnap() { if (S.base || !S.id) return; S.base = { t: Date.now(), items: snapshot() }; clearTimeout(snapT); snapT = setTimeout(() => store.set(snapKey(), S.base), 800); }
 function diffSince() {
   if (!S.base) return [];
   const A = S.base.items, B = snapshot(), inB = new Set(B.map(x => x[0])), inA = new Set(A.map(x => x[0]));
@@ -2238,11 +2263,34 @@ function diffSince() {
   const groups = new Map(), grp = k => { if (!groups.has(k)) groups.set(k, { anchor: k, old: [], neu: [] }); return groups.get(k); };
   let last = '^'; for (const x of A) { if (inB.has(x[0])) last = x[0]; else grp(last).old.push(x); }
   last = '^'; for (const x of B) { if (inA.has(x[0])) last = x[0]; else grp(last).neu.push(x); }
-  return [...groups.values()].map(g => ({ ...g, cats: new Set([...g.old, ...g.neu].flatMap(x => x[2].split(',')).filter(Boolean)), scene: (g.neu[0] || g.old[0])[3] }))
+  const out = [...groups.values()];
+  // ohne neuen Text: Gewerk/Format anders, oder Absatz verschoben
+  const mA = new Map(A.map(x => [x[0], x])), mB = new Map(B.map(x => [x[0], x]));
+  for (const x of B) { const o = mA.get(x[0]); if (o && (o[2] !== x[2] || (o[4] != null && x[4] != null && o[4] !== x[4]))) out.push({ anchor: x[0], old: [o], neu: [x], fmt: true }); }
+  const ka = A.map(x => x[0]).filter(k => inB.has(k)), kb = B.map(x => x[0]).filter(k => inA.has(k)), lcs = lcsKeep(ka, kb);
+  for (const k of kb) if (!lcs.has(k) && !out.some(g => g.fmt && g.anchor === k)) out.push({ anchor: k, old: [mA.get(k)], neu: [mB.get(k)], mov: true });
+  return out.map(g => ({ ...g, cats: new Set([...g.old, ...g.neu].flatMap(x => x[2].split(',')).filter(Boolean)), scene: (g.neu[0] || g.old[0])[3] }))
     .sort((a, b) => a.scene - b.scene);
 }
+function lcsKeep(a, b) {                                  // gemeinsame Reihenfolge (was nicht drin ist, wurde verschoben)
+  let s0 = 0; while (s0 < a.length && s0 < b.length && a[s0] === b[s0]) s0++;
+  let e = 0; while (e < a.length - s0 && e < b.length - s0 && a[a.length - 1 - e] === b[b.length - 1 - e]) e++;
+  const keep = new Set([...a.slice(0, s0), ...a.slice(a.length - e)]), A = a.slice(s0, a.length - e), B = b.slice(s0, b.length - e);
+  if (!A.length || !B.length) return keep; if (A.length * B.length > 4e6) { A.forEach(k => keep.add(k)); return keep; }
+  const n = A.length, m = B.length, L = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
+  for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) L[i][j] = A[i] === B[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+  let i = 0, j = 0; while (i < n && j < m) { if (A[i] === B[j]) { keep.add(A[i]); i++; j++; } else if (L[i + 1][j] >= L[i][j + 1]) i++; else j++; }
+  return keep;
+}
 const relevant = g => [...g.cats].some(c => c !== 'head' && visible(c));
-function updateBadge() { const n = chgOpen().length; const b = $('tools-n'); b.textContent = n; b.hidden = !n; }
+const chgSeenKey = () => 'chgseen-' + S.id, chgSeen = () => new Set(store.get(chgSeenKey(), []));
+function chgSee(g) { const r = chgSeen(), k = chgSig(g); if (r.has(k)) return; r.add(k); store.set(chgSeenKey(), [...r].slice(-800)); updateBadge(); }
+function updateBadge() {
+  const L = chgOpen(), n = L.length; const b = $('tools-n'); b.textContent = n; b.hidden = !n;
+  const seen = chgSeen(), hi = new Map(); for (const g of L) { const st = seen.has(chgSig(g)) ? 'seen' : 'new'; for (const x of g.neu) if (hi.get(x[0]) !== 'new') hi.set(x[0], st); }
+  S.chgHi = hi;                                             // in der Fassung hell hinterlegen, bis gelesen
+  document.querySelectorAll('#main [data-k]').forEach(e => { const h = hi.get(e.dataset.k); e.classList.toggle('chg-new', h === 'new'); e.classList.toggle('chg-seen', h === 'seen'); });
+}
 /* ---------- Durchgang: kleines Seitenfenster, Stelle für Stelle (springt mit, Tool-Fenster zu) ---------- */
 const WALK = { items: [], i: 0 };
 function walkOpen(o) {                                      // o: { title, items:[{ key, title, node() | text, sub, img, actions:[{label, fn, main}] }], start, onClose, done }
@@ -2276,39 +2324,46 @@ function walkShow(go) {
   if (go && it.key) jumpTo(it.key);
 }
 /* einzeln abgehakte Änderungen */
-const chgSig = g => JSON.stringify([g.old.map(x => x[1]), g.neu.map(x => x[1])]);
+const chgSig = g => JSON.stringify([g.fmt ? 'f' : g.mov ? 'm' : '', g.old.map(x => x[1] + (g.fmt ? '|' + x[2] + '|' + (x[4] || '') : '')), g.neu.map(x => x[1] + (g.fmt ? '|' + x[2] + '|' + (x[4] || '') : ''))]);
 const chgReadKey = () => 'chgread-' + S.id;
 const chgRead = () => new Set(store.get(chgReadKey(), []));
 const chgOpen = () => { const r = chgRead(); return diffSince().filter(relevant).filter(g => !r.has(chgSig(g))); };
-function chgMark(g) { const r = chgRead(); r.add(chgSig(g)); store.set(chgReadKey(), [...r].slice(-500)); updateBadge(); }
-function chgNode(g) { const d = mk('div'); const cats = mk('div', 'cats'); [...g.cats].filter(c => S.cats.get(c)).forEach(c => cats.append(dot(S.cats.get(c).hex), mk('span', '', catName(c)))); d.append(cats);
-  const cut = t => t.length > 180 ? t.slice(0, 180) + '…' : t; g.old.forEach(x => d.append(mk('div', 'old', cut(x[1])))); g.neu.forEach(x => d.append(mk('div', 'neu', cut(x[1])))); d.append(mk('div', 'sub', sceneName(g.scene))); return d; }
+function chgMark(g) {
+  const r = chgRead(); r.add(chgSig(g)); store.set(chgReadKey(), [...r].slice(-500));
+  if (diffSince().every(x => r.has(chgSig(x)))) { S.base = { t: Date.now(), items: snapshot() }; store.set(snapKey(), S.base); store.set(chgReadKey(), []); store.set(chgSeenKey(), []); }   // alles gelesen: neuer Vergleichsstand
+  updateBadge();
+}
+const chgKind = g => (g.fmt ? 'Gewerk/Format geändert' : g.mov ? 'Verschoben' : g.old.length && g.neu.length ? 'Geändert' : g.neu.length ? 'Neu' : 'Gestrichen');
+function chgNode(g) { const d = mk('div'); d.append(mk('div', 'kind', chgKind(g))); const cats = mk('div', 'cats'); [...g.cats].filter(c => S.cats.get(c)).forEach(c => cats.append(dot(S.cats.get(c).hex), mk('span', '', catName(c)))); d.append(cats);
+  const cut = t => t.length > 180 ? t.slice(0, 180) + '…' : t;
+  if (g.fmt || g.mov) g.neu.forEach(x => d.append(mk('div', 'same', cut(x[1])))); else { g.old.forEach(x => d.append(mk('div', 'old', cut(x[1])))); g.neu.forEach(x => d.append(mk('div', 'neu', cut(x[1])))); }
+  d.append(mk('div', 'sub', sceneName(g.scene))); return d; }
 function chgWalk(list, start) {
   walkOpen({ title: 'Änderungen', start, done: 'Alle Änderungen gelesen.', items: list.map(g => ({ key: g.neu[0]?.[0] || (g.anchor !== '^' ? g.anchor : null), title: ((g.neu[0] || g.old[0])?.[1] || '').slice(0, 60), node: () => chgNode(g),
-    actions: [{ label: '✓ Gelesen', main: true, fn: () => chgMark(g) }] })) });
+    actions: [{ label: '✓ Gelesen', main: true, fn: () => chgMark(g) }], node: () => { chgSee(g); return chgNode(g); } })) });   // angezeigt = gesehen
 }
 function showChanges() {
   const build = b => {
     const all = diffSince(), list = chgOpen();
     const when = S.base ? new Date(S.base.t).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : null;
-    b.append(mk('p', 'fine', when ? 'Seit deinem letzten Besuch (' + when + '): ' + list.length + ' Änderung(en) in deinen sichtbaren Gewerken' + (all.length > list.length ? ', ' + (all.length - list.length) + ' weitere in ausgeblendeten.' : '.') : 'Erster Besuch dieser Fassung auf diesem Gerät – ab jetzt werden Änderungen gesammelt.'));
+    const seen = chgSeen(), nNew = list.filter(g => !seen.has(chgSig(g))).length;
+    b.append(mk('p', 'fine', when ? 'Seit ' + when + ' (bis du sie als gelesen markierst): ' + list.length + ' Änderung(en) in deinen sichtbaren Gewerken' + (list.length ? ' – ' + nNew + ' neu, ' + (list.length - nNew) + ' schon gesehen' : '') + (all.length > list.length ? ', ' + (all.length - list.length) + ' weitere in ausgeblendeten.' : '.') : 'Erster Besuch dieser Fassung auf diesem Gerät – ab jetzt werden Änderungen gesammelt.'));
     const tools = mk('div', 'acts noprint'); const ok = mk('button', 'btn', 'Alle als gelesen markieren'); ok.type = 'button';
-    ok.onclick = () => { S.base = { t: Date.now(), items: snapshot() }; store.set(snapKey(), S.base); store.set(chgReadKey(), []); updateBadge(); openPanel('Änderungen', build, csv, 'Änderungen'); };
+    ok.onclick = () => { S.base = { t: Date.now(), items: snapshot() }; store.set(snapKey(), S.base); store.set(chgReadKey(), []); store.set(chgSeenKey(), []); updateBadge(); openPanel('Änderungen', build, csv, 'Änderungen'); };
     const wk = mk('button', 'btn pri', 'Durchgehen'); wk.type = 'button'; wk.onclick = () => chgWalk(list, 0);
     tools.append(wk, ok); if (list.length) b.append(tools);
     let sc = -1;
     list.forEach((g, gi) => {
       if (g.scene !== sc) { sc = g.scene; b.append(mk('h3', 'sc', sceneName(sc))); }
-      const box = mk('div', 'chg');
+      const box = mk('div', 'chg'), sn = seen.has(chgSig(g)); box.append(mk('span', 'tag' + (sn ? ' seen' : ''), sn ? 'gesehen' : 'neu'), mk('div', 'kind', chgKind(g)));
       const cats = mk('div', 'cats'); [...g.cats].filter(c => S.cats.get(c)).forEach(c => cats.append(dot(S.cats.get(c).hex), mk('span', 'gw', catName(c)))); box.append(cats);
-      g.old.forEach(x => box.append(mk('div', 'old', x[1])));
-      g.neu.forEach(x => box.append(mk('div', 'neu', x[1])));
+      if (g.fmt || g.mov) g.neu.forEach(x => box.append(mk('div', 'same', x[1]))); else { g.old.forEach(x => box.append(mk('div', 'old', x[1]))); g.neu.forEach(x => box.append(mk('div', 'neu', x[1]))); }
       box.classList.add('tap'); box.onclick = () => chgWalk(list, gi);   // antippen: zur Stelle, Seitenfenster zum Durchklicken
       box.append(mk('span', 'go', 'Zur Stelle →'));
       b.append(box);
     });
   };
-  const csv = () => [['Szene', 'Gewerke', 'Vorher', 'Nachher']].concat(diffSince().filter(relevant).map(g => [sceneName(g.scene), [...g.cats].map(catName).join(', '), g.old.map(x => x[1]).join(' / '), g.neu.map(x => x[1]).join(' / ')]));
+  const csv = () => [['Szene', 'Art', 'Gewerke', 'Vorher', 'Nachher']].concat(diffSince().filter(relevant).map(g => [sceneName(g.scene), chgKind(g), [...g.cats].map(catName).join(', '), g.old.map(x => x[1]).join(' / '), g.neu.map(x => x[1]).join(' / ')]));
   openPanel('Änderungen', build, csv, 'Änderungen');
 }
 
@@ -3073,7 +3128,7 @@ async function exportViewPdf() {
   } catch (e) { toast('PDF: ' + (e.message || 'ging nicht'), 6000); }
 }
 /* ---------- Live selbst aktualisieren (allein; in Doppelpult macht das Doppelpult) ---------- */
-const APPV = 134;                                           // bei jeder neuen Version hochzählen
+const APPV = 135;                                           // bei jeder neuen Version hochzählen
 async function appFresh() { try { const r = await fetch(location.pathname + '?v=' + Date.now(), { cache: 'no-store' }); const m = /const APPV = (\d+);/.exec(await r.text()); return m ? +m[1] : 0; } catch (e) { return 0; } }
 async function appRenew() {
   if (!(await netOk())) { toast('Ohne Netz lässt sich Live nicht aktualisieren.', 4000); return; }
@@ -3132,7 +3187,7 @@ function showMenu() {
     };
     const TXT = '#3E66C4', CUE = '#E08A00';                // links alles zum Text, rechts Cues und Listen
     const cols = [
-      ['Text', [['find', 'Text suchen', 'Stichwort, Cue, Rolle', TXT, showMini], ['diff', 'Änderungen', 'seit deinem letzten Besuch', TXT, showChanges, n], ['pdf', 'Fassung als PDF', 'wie angezeigt – nur eingeblendete Gewerke', TXT, exportViewPdf]]],
+      ['Text', [['find', 'Text suchen', 'Stichwort, Cue, Rolle', TXT, showMini], ['diff', 'Änderungen', 'bis du sie als gelesen markierst', TXT, showChanges, n], ['pdf', 'Fassung als PDF', 'wie angezeigt – nur eingeblendete Gewerke', TXT, exportViewPdf]]],
       ['Cues & Listen', [['ext', 'Auszüge', 'Requisite, Kostüm, Umbau …', CUE, showExtracts], ['cue', 'Cue-Listen', 'mit Prüfung je Gewerk', CUE, showCues], ['plan', 'Szenenplan & Rufbuch', 'wer wann auftritt', CUE, showPlan]]]
     ];
     const grid = mk('div', 'lists');
